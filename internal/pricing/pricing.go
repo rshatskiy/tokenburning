@@ -3,6 +3,7 @@ package pricing
 import (
 	_ "embed"
 	"encoding/json"
+	"fmt"
 
 	"github.com/lens/lens/internal/model"
 )
@@ -29,6 +30,9 @@ func LoadEmbedded() (*Catalog, error) {
 	var c Catalog
 	if err := json.Unmarshal(embeddedPrices, &c); err != nil {
 		return nil, err
+	}
+	if c.Currency == "" {
+		return nil, fmt.Errorf("pricing: missing currency in embedded snapshot")
 	}
 	return &c, nil
 }
