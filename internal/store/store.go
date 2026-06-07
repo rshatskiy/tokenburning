@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"strings"
 	"time"
 
 	"github.com/rshatskiy/tokenburning/internal/model"
@@ -46,7 +47,7 @@ CREATE TABLE IF NOT EXISTS events (
     tok_cache_1h    INTEGER NOT NULL DEFAULT 0,
     tok_cache_5m    INTEGER NOT NULL DEFAULT 0,
     tok_reasoning   INTEGER NOT NULL DEFAULT 0,
-    tok_total       INTEGER NOT NULL DEFAULT 0,
+    tok_total       INTEGER NOT NULL DEFAULT 0, -- источник истины для новых БД; для старых добавляется ALTER ниже
     session_id      TEXT,
     project_key     TEXT,
     extra_raw       BLOB
@@ -56,9 +57,12 @@ CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);
 `); err != nil {
 		return err
 	}
-	// Идемпотентная миграция: добавляем tok_total если её ещё нет (существующие БД до этой версии).
-	// SQLite не поддерживает ALTER TABLE ADD COLUMN IF NOT EXISTS, поэтому игнорируем ошибку дублирования.
-	d.db.Exec(`ALTER TABLE events ADD COLUMN tok_total INTEGER NOT NULL DEFAULT 0`) //nolint:errcheck
+	// tok_total добавлен позже; для уже существующих БД добавляем колонку.
+	// Игнорируем только "duplicate column name" (колонка уже есть), прочие ошибки — наверх.
+	if _, err := d.db.Exec(`ALTER TABLE events ADD COLUMN tok_total INTEGER NOT NULL DEFAULT 0`); err != nil &&
+		!strings.Contains(err.Error(), "duplicate column name") {
+		return err
+	}
 	return nil
 }
 

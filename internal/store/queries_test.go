@@ -183,3 +183,26 @@ func TestKPITotalsAndCostOverTime(t *testing.T) {
 		t.Fatalf("day1 cost = %v, want 15", cot[0].Cost)
 	}
 }
+
+func TestSessionStatsUsesTotalTokens(t *testing.T) {
+	db := openTmp(t)
+	base := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	since := base.Add(-24 * time.Hour)
+	// Codex-подобная сессия: разбивка нулевая, заполнен только Total
+	e := model.Event{
+		EventID: "cx", Tool: model.ToolCodex, TS: base, Model: "unknown",
+		BillingMode: model.BillingFlatEquivalent,
+		Cost:        model.Cost{Amount: 0, Currency: "USD", Basis: model.BasisEstimated},
+		Tokens:      model.Tokens{Total: 368}, SessionID: "cs", ProjectKey: "/p",
+	}
+	if err := db.Insert([]model.Event{e}); err != nil {
+		t.Fatal(err)
+	}
+	s, err := db.SessionStats(since)
+	if err != nil {
+		t.Fatalf("SessionStats: %v", err)
+	}
+	if len(s.Scatter) != 1 || s.Scatter[0].Tokens != 368 {
+		t.Fatalf("токены Codex-сессии должны браться из Total (368): %+v", s.Scatter)
+	}
+}
