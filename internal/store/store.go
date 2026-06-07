@@ -7,7 +7,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-type DB struct{ sql *sql.DB }
+type DB struct{ db *sql.DB }
 
 // Open открывает/создаёт БД с включённым WAL и busy_timeout, прогоняет миграции.
 func Open(path string) (*DB, error) {
@@ -17,7 +17,7 @@ func Open(path string) (*DB, error) {
 		return nil, err
 	}
 	sqlDB.SetMaxOpenConns(1) // единственный писатель — сериализация записи (§8.2)
-	d := &DB{sql: sqlDB}
+	d := &DB{db: sqlDB}
 	if err := d.migrate(); err != nil {
 		sqlDB.Close()
 		return nil, err
@@ -25,10 +25,10 @@ func Open(path string) (*DB, error) {
 	return d, nil
 }
 
-func (d *DB) Close() error { return d.sql.Close() }
+func (d *DB) Close() error { return d.db.Close() }
 
 func (d *DB) migrate() error {
-	_, err := d.sql.Exec(`
+	_, err := d.db.Exec(`
 CREATE TABLE IF NOT EXISTS events (
     event_id        TEXT PRIMARY KEY,
     tool            TEXT NOT NULL,
@@ -57,7 +57,10 @@ CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);
 
 // Insert записывает события идемпотентно (INSERT OR IGNORE по event_id) одной транзакцией.
 func (d *DB) Insert(events []model.Event) error {
-	tx, err := d.sql.Begin()
+	if len(events) == 0 {
+		return nil
+	}
+	tx, err := d.db.Begin()
 	if err != nil {
 		return err
 	}
@@ -96,7 +99,7 @@ type ModelSummary struct {
 }
 
 func (d *DB) SummaryByModel() ([]ModelSummary, error) {
-	rows, err := d.sql.Query(`SELECT model, COUNT(*), COALESCE(SUM(cost_amount),0)
+	rows, err := d.db.Query(`SELECT model, COUNT(*), COALESCE(SUM(cost_amount),0)
         FROM events GROUP BY model ORDER BY 3 DESC`)
 	if err != nil {
 		return nil, err

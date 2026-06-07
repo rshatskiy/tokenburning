@@ -42,4 +42,16 @@ func TestInsertIsIdempotent(t *testing.T) {
 	if rows[0].CostAmount != 1.5 {
 		t.Fatalf("CostAmount = %f, ожидалось 1.5", rows[0].CostAmount)
 	}
+
+	// Другой event_id должен добавить строку.
+	if err := db.Insert([]model.Event{sampleEvent("req_B")}); err != nil {
+		t.Fatalf("Insert req_B: %v", err)
+	}
+	rows, err = db.SummaryByModel()
+	if err != nil {
+		t.Fatalf("SummaryByModel: %v", err)
+	}
+	if rows[0].Events != 2 {
+		t.Fatalf("Events = %d, ожидалось 2 после добавления другого event_id", rows[0].Events)
+	}
 }
