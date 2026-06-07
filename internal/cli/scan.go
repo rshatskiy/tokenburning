@@ -8,12 +8,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/lens/lens/internal/adapter"
-	"github.com/lens/lens/internal/adapter/claudecode"
-	"github.com/lens/lens/internal/model"
-	"github.com/lens/lens/internal/platform"
-	"github.com/lens/lens/internal/pricing"
-	"github.com/lens/lens/internal/store"
+	"github.com/rshatskiy/tokenburning/internal/adapter"
+	"github.com/rshatskiy/tokenburning/internal/adapter/claudecode"
+	"github.com/rshatskiy/tokenburning/internal/model"
+	"github.com/rshatskiy/tokenburning/internal/platform"
+	"github.com/rshatskiy/tokenburning/internal/pricing"
+	"github.com/rshatskiy/tokenburning/internal/store"
 )
 
 func newScanCmd() *cobra.Command {
@@ -25,7 +25,7 @@ func newScanCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			dbPath := filepath.Join(home, ".lens", "lens.db")
+			dbPath := filepath.Join(home, ".tokenburning", "tokenburning.db")
 			if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
 				return err
 			}

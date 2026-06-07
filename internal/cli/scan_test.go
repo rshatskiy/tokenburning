@@ -19,7 +19,7 @@ func TestRunScanProducesSummary(t *testing.T) {
 	}
 	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(home, ".claude"))
 
-	dbPath := filepath.Join(t.TempDir(), "lens.db")
+	dbPath := filepath.Join(t.TempDir(), "tokenburning.db")
 	out, err := runScan(dbPath)
 	if err != nil {
 		t.Fatalf("runScan: %v", err)
@@ -41,7 +41,7 @@ func TestRunScanPrintsPerToolSection(t *testing.T) {
 	}
 	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(home, ".claude"))
 	t.Setenv("CODEX_HOME", filepath.Join(home, "no-codex"))
-	dbPath := filepath.Join(t.TempDir(), "lens.db")
+	dbPath := filepath.Join(t.TempDir(), "tokenburning.db")
 	out, err := runScan(dbPath)
 	if err != nil {
 		t.Fatalf("runScan: %v", err)
@@ -59,7 +59,7 @@ func TestRescanAfterRewriteNoDuplicateCounts(t *testing.T) {
 	}
 	logPath := filepath.Join(projDir, "a.jsonl")
 	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(home, ".claude"))
-	dbPath := filepath.Join(t.TempDir(), "lens.db")
+	dbPath := filepath.Join(t.TempDir(), "tokenburning.db")
 
 	ev := func(id string) string {
 		return `{"type":"assistant","requestId":"` + id + `","sessionId":"s","cwd":"/p","timestamp":"2026-06-07T10:00:00.000Z","message":{"id":"m","model":"claude-opus-4-7","usage":{"input_tokens":1000000,"output_tokens":0}}}` + "\n"

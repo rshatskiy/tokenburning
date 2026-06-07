@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lens/lens/internal/model"
+	"github.com/rshatskiy/tokenburning/internal/model"
 )
 
 func sampleEvent(id string) model.Event {
@@ -18,7 +18,7 @@ func sampleEvent(id string) model.Event {
 }
 
 func TestInsertIsIdempotent(t *testing.T) {
-	db, err := Open(filepath.Join(t.TempDir(), "lens.db"))
+	db, err := Open(filepath.Join(t.TempDir(), "tokenburning.db"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestInsertIsIdempotent(t *testing.T) {
 }
 
 func TestSummaryByTool(t *testing.T) {
-	db, err := Open(filepath.Join(t.TempDir(), "lens.db"))
+	db, err := Open(filepath.Join(t.TempDir(), "tokenburning.db"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}

@@ -3,7 +3,7 @@ package store
 import (
 	"database/sql"
 
-	"github.com/lens/lens/internal/model"
+	"github.com/rshatskiy/tokenburning/internal/model"
 	_ "modernc.org/sqlite"
 )
 

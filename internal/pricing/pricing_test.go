@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/lens/lens/internal/model"
+	"github.com/rshatskiy/tokenburning/internal/model"
 )
 
 func TestCostKnownModelUsesActualBasis(t *testing.T) {

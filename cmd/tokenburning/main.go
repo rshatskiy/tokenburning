@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/lens/lens/internal/cli"
+	"github.com/rshatskiy/tokenburning/internal/cli"
 )
 
 func main() {
 	if err := cli.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, "lens:", err)
+		fmt.Fprintln(os.Stderr, "tokenburning:", err)
 		os.Exit(1)
 	}
 }

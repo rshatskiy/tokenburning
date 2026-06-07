@@ -1,8 +1,8 @@
 package adapter
 
 import (
-	"github.com/lens/lens/internal/model"
-	"github.com/lens/lens/internal/platform"
+	"github.com/rshatskiy/tokenburning/internal/model"
+	"github.com/rshatskiy/tokenburning/internal/platform"
 )
 
 // Source — конкретный источник данных (файл лога или БД) на этой машине.

@@ -3,8 +3,8 @@ package claudecode
 import (
 	"testing"
 
-	"github.com/lens/lens/internal/adapter"
-	"github.com/lens/lens/internal/model"
+	"github.com/rshatskiy/tokenburning/internal/adapter"
+	"github.com/rshatskiy/tokenburning/internal/model"
 )
 
 func TestCollectEmitsOnlyAssistantEvents(t *testing.T) {

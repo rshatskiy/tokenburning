@@ -1,13 +1,16 @@
 # Go
-/lens
+/tokenburning
 *.exe
 *.test
 *.out
 /dist/
-# Local lens data
-/.lens/
+# Local tokenburning data
+/.tokenburning/
 # OS
 .DS_Store
 
 # Installed design-taste skills (tooling)
 .agents/
+
+# Brainstorm visual companion
+.superpowers/

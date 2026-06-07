@@ -1,4 +1,4 @@
-module github.com/lens/lens
+module github.com/rshatskiy/tokenburning
 
 go 1.26.2
 

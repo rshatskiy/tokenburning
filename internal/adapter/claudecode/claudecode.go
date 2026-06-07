@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/lens/lens/internal/adapter"
-	"github.com/lens/lens/internal/model"
-	"github.com/lens/lens/internal/platform"
+	"github.com/rshatskiy/tokenburning/internal/adapter"
+	"github.com/rshatskiy/tokenburning/internal/model"
+	"github.com/rshatskiy/tokenburning/internal/platform"
 )
 
 var _ adapter.Adapter = (*Adapter)(nil)

@@ -2,10 +2,10 @@ package cli
 
 import "github.com/spf13/cobra"
 
-// NewRootCmd собирает корневую команду lens со всеми подкомандами.
+// NewRootCmd собирает корневую команду tokenburning со всеми подкомандами.
 func NewRootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Use:   "lens",
+		Use:   "tokenburning",
 		Short: "Единый локальный вид по всем твоим ИИ-инструментам",
 	}
 	root.AddCommand(newScanCmd())
