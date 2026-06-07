@@ -9,6 +9,7 @@ func NewRootCmd() *cobra.Command {
 		Short: "Единый локальный вид по всем твоим ИИ-инструментам",
 	}
 	root.AddCommand(newScanCmd())
+	root.AddCommand(newDashboardCmd())
 	return root
 }
 
