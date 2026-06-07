@@ -115,3 +115,31 @@ func (d *DB) SummaryByModel() ([]ModelSummary, error) {
 	}
 	return out, rows.Err()
 }
+
+// ToolSummary — агрегат по инструменту (кросс-тул вид).
+type ToolSummary struct {
+	Tool       string
+	Events     int64
+	Tokens     int64
+	CostAmount float64
+}
+
+func (d *DB) SummaryByTool() ([]ToolSummary, error) {
+	rows, err := d.db.Query(`SELECT tool, COUNT(*),
+        COALESCE(SUM(tok_input+tok_output+tok_cache_read+tok_cache_1h+tok_cache_5m+tok_reasoning),0),
+        COALESCE(SUM(cost_amount),0)
+        FROM events GROUP BY tool ORDER BY 4 DESC, 3 DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ToolSummary
+	for rows.Next() {
+		var s ToolSummary
+		if err := rows.Scan(&s.Tool, &s.Events, &s.Tokens, &s.CostAmount); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
