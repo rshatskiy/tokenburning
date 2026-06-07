@@ -86,3 +86,54 @@ func (d *DB) CostOverTime(since time.Time) ([]DayCost, error) {
 	}
 	return out, rows.Err()
 }
+
+type ProjectSummary struct {
+	Project  string
+	Cost     float64
+	Sessions int
+	Events   int
+}
+
+// SummaryByProject — агрегат по project_key начиная с since, по убыванию стоимости.
+func (d *DB) SummaryByProject(since time.Time) ([]ProjectSummary, error) {
+	rows, err := d.db.Query(`SELECT COALESCE(project_key,'(нет)'),
+        COALESCE(SUM(cost_amount),0), COUNT(DISTINCT session_id), COUNT(*)
+        FROM events WHERE ts >= ? GROUP BY project_key ORDER BY 2 DESC`, since.Unix())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ProjectSummary
+	for rows.Next() {
+		var p ProjectSummary
+		if err := rows.Scan(&p.Project, &p.Cost, &p.Sessions, &p.Events); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+type DaySessions struct {
+	Date     string
+	Sessions int
+}
+
+// ActivityByDay — число сессий по дням (UTC) начиная с since.
+func (d *DB) ActivityByDay(since time.Time) ([]DaySessions, error) {
+	rows, err := d.db.Query(`SELECT date(ts,'unixepoch'), COUNT(DISTINCT session_id)
+        FROM events WHERE ts >= ? GROUP BY date(ts,'unixepoch') ORDER BY 1`, since.Unix())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []DaySessions
+	for rows.Next() {
+		var d DaySessions
+		if err := rows.Scan(&d.Date, &d.Sessions); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}

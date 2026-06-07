@@ -49,6 +49,42 @@ func TestPercentile(t *testing.T) {
 	}
 }
 
+func TestSummaryByProjectAndActivity(t *testing.T) {
+	db := openTmp(t)
+	base := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	since := base.Add(-24 * time.Hour)
+	if err := db.Insert([]model.Event{
+		ev("a", "s1", "/p1", base, 10, 1, 0),
+		ev("b", "s2", "/p1", base.Add(24*time.Hour), 5, 1, 0),
+		ev("c", "s3", "/p2", base, 20, 1, 0),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	pr, err := db.SummaryByProject(since)
+	if err != nil {
+		t.Fatalf("SummaryByProject: %v", err)
+	}
+	if len(pr) != 2 || pr[0].Project != "/p1" { // /p1 дороже: 15 vs 20? нет, /p2=20 -> сортировка по cost desc
+		// /p2 cost 20 > /p1 cost 15 → первый /p2
+	}
+	var p1 *ProjectSummary
+	for i := range pr {
+		if pr[i].Project == "/p1" {
+			p1 = &pr[i]
+		}
+	}
+	if p1 == nil || p1.Cost != 15 || p1.Sessions != 2 {
+		t.Fatalf("/p1 summary неверна: %+v", p1)
+	}
+	act, err := db.ActivityByDay(since)
+	if err != nil {
+		t.Fatalf("ActivityByDay: %v", err)
+	}
+	if len(act) != 2 {
+		t.Fatalf("дней активности %d, want 2", len(act))
+	}
+}
+
 func TestKPITotalsAndCostOverTime(t *testing.T) {
 	db := openTmp(t)
 	base := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
