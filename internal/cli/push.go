@@ -1,13 +1,10 @@
 package cli
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -65,14 +62,8 @@ func newPushCmd() *cobra.Command {
 			if to == "" {
 				return fmt.Errorf("сервер не задан: --to <url> или TOKENBURNING_SERVER (приёмник — отдельный спек; пока используйте --dry-run)")
 			}
-			c := &http.Client{Timeout: 30 * time.Second}
-			resp, err := c.Post(to+"/v1/aggregates", "application/json", bytes.NewReader(data))
-			if err != nil {
-				return fmt.Errorf("push: %w", err)
-			}
-			defer resp.Body.Close()
-			if resp.StatusCode >= 300 {
-				return fmt.Errorf("push: сервер ответил %s", resp.Status)
+			if err := aggregate.Push(payload, to); err != nil {
+				return err
 			}
 			cmd.Printf("отправлено наверх: %v (%d байт)\n", cats, len(data))
 			return nil
