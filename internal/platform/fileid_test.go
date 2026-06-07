@@ -16,11 +16,37 @@ func TestStatSameFileSameID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Stat: %v", err)
 	}
-	id2, _ := Stat(p)
+	id2, err := Stat(p)
+	if err != nil {
+		t.Fatalf("Stat (second): %v", err)
+	}
 	if id1 != id2 {
 		t.Fatalf("FileID не стабилен: %v != %v", id1, id2)
 	}
 	if id1.IsZero() {
 		t.Fatal("FileID пустой для существующего файла")
+	}
+
+	p2 := filepath.Join(dir, "b.log")
+	if err := os.WriteFile(p2, []byte("world"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	id3, err := Stat(p2)
+	if err != nil {
+		t.Fatalf("Stat p2: %v", err)
+	}
+	if id1 == id3 {
+		t.Fatal("FileID одинаков для разных файлов")
+	}
+}
+
+func TestDetectHonorsClaudeConfigDir(t *testing.T) {
+	t.Setenv("CLAUDE_CONFIG_DIR", "/custom")
+	paths, err := Detect()
+	if err != nil {
+		t.Fatalf("Detect: %v", err)
+	}
+	if paths.ClaudeCodeProjects != "/custom/projects" {
+		t.Fatalf("ClaudeCodeProjects = %q, want /custom/projects", paths.ClaudeCodeProjects)
 	}
 }

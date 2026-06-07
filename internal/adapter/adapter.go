@@ -29,7 +29,7 @@ type QuarantineFunc func(raw []byte, err error)
 type Adapter interface {
 	Name() model.Tool
 	Capabilities() model.Capabilities
-	Discover(p platform.Paths) ([]Source, error)
+	Discover(paths platform.Paths) ([]Source, error)
 	// Collect выдаёт новые события начиная с cursor. Обязан быть идемпотентным
 	// (event_id стабилен) и толерантным: битая запись идёт в quarantine, не в panic.
 	Collect(src Source, cursor Cursor, emit EmitFunc, quarantine QuarantineFunc) (Cursor, error)

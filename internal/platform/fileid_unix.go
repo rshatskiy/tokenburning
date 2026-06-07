@@ -17,5 +17,5 @@ func Stat(path string) (FileID, error) {
 	if !ok {
 		return FileID{}, nil // неизвестная платформа — нулевой ID (fallback на хеш позже)
 	}
-	return FileID{A: uint64(st.Dev), B: uint64(st.Ino)}, nil
+	return FileID{A: uint64(int64(st.Dev)), B: uint64(st.Ino)}, nil
 }
