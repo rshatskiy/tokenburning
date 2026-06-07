@@ -2,7 +2,10 @@ package claudecode
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -12,7 +15,6 @@ import (
 	"github.com/lens/lens/internal/platform"
 )
 
-// compile-time assertion: Adapter satisfies adapter.Adapter.
 var _ adapter.Adapter = (*Adapter)(nil)
 
 type Adapter struct{}
@@ -59,7 +61,6 @@ type rawRecord struct {
 }
 
 type rawMessage struct {
-	ID    string `json:"id"`
 	Model string `json:"model"`
 	Usage *struct {
 		Input          int64 `json:"input_tokens"`
@@ -80,59 +81,80 @@ func (a *Adapter) Collect(src adapter.Source, _ adapter.Cursor, emit adapter.Emi
 	}
 	defer f.Close()
 
-	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 0, 1024*1024), 16*1024*1024) // длинные строки JSONL
-	for sc.Scan() {
-		line := sc.Bytes()
-		if len(line) == 0 {
-			continue
+	// bufio.Reader.ReadBytes обрабатывает строки любой длины (в отличие от
+	// Scanner, который аборти́т весь файл на строке больше буфера, §15).
+	r := bufio.NewReader(f)
+	for {
+		line, readErr := r.ReadBytes('\n')
+		if len(bytes.TrimRight(line, "\r\n")) > 0 {
+			a.processLine(line, emit, quarantine)
 		}
-		var rec rawRecord
-		if err := json.Unmarshal(line, &rec); err != nil {
-			quarantine(append([]byte(nil), line...), err)
-			continue
+		if readErr != nil {
+			if readErr == io.EOF {
+				break
+			}
+			return adapter.Cursor{}, readErr
 		}
-		if rec.Type != "assistant" || len(rec.Message) == 0 {
-			continue // биллинг несут только assistant-записи
-		}
-		var msg rawMessage
-		if err := json.Unmarshal(rec.Message, &msg); err != nil {
-			quarantine(append([]byte(nil), line...), err)
-			continue
-		}
-		if msg.Usage == nil {
-			continue
-		}
-		ts, _ := time.Parse(time.RFC3339, rec.Timestamp)
-		tk := model.Tokens{
-			Input:     msg.Usage.Input,
-			Output:    msg.Usage.Output,
-			CacheRead: msg.Usage.CacheRead,
-		}
-		if b := msg.Usage.CacheBreakdown; b != nil {
-			tk.Cache1h = b.Ephemeral1h
-			tk.Cache5m = b.Ephemeral5m
-		} else {
-			tk.Cache5m = msg.Usage.CacheCreation // без разбивки — весь creation как 5m
-		}
-		modelName := msg.Model
-		if modelName == "" {
-			modelName = "unknown"
-		}
-		emit(model.Event{
-			EventID:     rec.RequestID,
-			Tool:        model.ToolClaudeCode,
-			TS:          ts,
-			Model:       modelName,
-			BillingMode: model.BillingFlatEquivalent,
-			Tokens:      tk,
-			SessionID:   rec.SessionID,
-			ProjectKey:  rec.CWD, // хеширование — в aggregate-срезе; локально это путь
-			ExtraRaw:    append([]byte(nil), line...),
-		})
-	}
-	if err := sc.Err(); err != nil {
-		return adapter.Cursor{}, err
 	}
 	return adapter.Cursor{}, nil
+}
+
+// processLine разбирает одну строку JSONL. Любая проблема ведёт в карантин,
+// но никогда не роняет сбор и не эмитит частичное событие.
+func (a *Adapter) processLine(raw []byte, emit adapter.EmitFunc, quarantine adapter.QuarantineFunc) {
+	line := bytes.TrimRight(raw, "\r\n")
+	cp := func() []byte { return append([]byte(nil), line...) }
+
+	var rec rawRecord
+	if err := json.Unmarshal(line, &rec); err != nil {
+		quarantine(cp(), err)
+		return
+	}
+	if rec.Type != "assistant" || len(rec.Message) == 0 {
+		return // биллинг несут только assistant-записи
+	}
+	var msg rawMessage
+	if err := json.Unmarshal(rec.Message, &msg); err != nil {
+		quarantine(cp(), err)
+		return
+	}
+	if msg.Usage == nil {
+		return
+	}
+	if rec.RequestID == "" {
+		quarantine(cp(), fmt.Errorf("пустой requestId — нет стабильного event_id"))
+		return
+	}
+	ts, err := time.Parse(time.RFC3339, rec.Timestamp)
+	if err != nil {
+		quarantine(cp(), fmt.Errorf("непарсимый timestamp %q: %w", rec.Timestamp, err))
+		return
+	}
+
+	tk := model.Tokens{
+		Input:     msg.Usage.Input,
+		Output:    msg.Usage.Output,
+		CacheRead: msg.Usage.CacheRead,
+	}
+	if b := msg.Usage.CacheBreakdown; b != nil {
+		tk.Cache1h = b.Ephemeral1h
+		tk.Cache5m = b.Ephemeral5m
+	} else {
+		tk.Cache5m = msg.Usage.CacheCreation // без разбивки — весь creation как 5m
+	}
+	modelName := msg.Model
+	if modelName == "" {
+		modelName = "unknown"
+	}
+	emit(model.Event{
+		EventID:     rec.RequestID,
+		Tool:        model.ToolClaudeCode,
+		TS:          ts,
+		Model:       modelName,
+		BillingMode: model.BillingFlatEquivalent,
+		Tokens:      tk,
+		SessionID:   rec.SessionID,
+		ProjectKey:  rec.CWD,
+		ExtraRaw:    cp(),
+	})
 }
