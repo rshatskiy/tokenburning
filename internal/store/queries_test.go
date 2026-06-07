@@ -88,30 +88,44 @@ func TestSummaryByProjectAndActivity(t *testing.T) {
 	}
 }
 
-func TestSessionStats(t *testing.T) {
+func findTool(ts []ToolSessions, tool string) *SessionStatsResult {
+	for i := range ts {
+		if ts[i].Tool == tool {
+			return &ts[i].Stats
+		}
+	}
+	return nil
+}
+
+func TestSessionStatsByTool(t *testing.T) {
 	db := openTmp(t)
 	base := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
 	since := base.Add(-48 * time.Hour)
 	var evs []model.Event
-	// сессия s1: 3 события, длительность 60 мин, стоимость 30
+	// сессия s1 (claude_code): 3 события, активная длительность 60 мин (2 gap по 1800s), стоимость 30
 	evs = append(evs,
 		ev("a1", "s1", "/p1", base, 10, 100, 0),
 		ev("a2", "s1", "/p1", base.Add(30*time.Minute), 10, 100, 0),
 		ev("a3", "s1", "/p1", base.Add(60*time.Minute), 10, 100, 0))
-	// сессия s2: 1 событие (как Codex), длительность 0, стоимость 5
+	// сессия s2 (claude_code): 1 событие (как Codex), активная длительность 0, стоимость 5
 	evs = append(evs, ev("b1", "s2", "/p2", base, 5, 50, 0))
-	// сессия s3: 2 события, длительность 10 мин, стоимость 2
+	// сессия s3 (claude_code): 2 события, активная длительность 10 мин, стоимость 2
 	evs = append(evs,
 		ev("c1", "s3", "/p3", base, 1, 10, 0),
 		ev("c2", "s3", "/p3", base.Add(10*time.Minute), 1, 10, 0))
 	if err := db.Insert(evs); err != nil {
 		t.Fatal(err)
 	}
-	s, err := db.SessionStats(since)
+	ts, err := db.SessionStatsByTool(since)
 	if err != nil {
-		t.Fatalf("SessionStats: %v", err)
+		t.Fatalf("SessionStatsByTool: %v", err)
 	}
-	// длительность считается по s1(60) и s3(10) → медиана 35
+	// все события — claude_code → ровно один инструмент
+	if len(ts) != 1 || ts[0].Tool != "claude_code" {
+		t.Fatalf("ожидался один инструмент claude_code, получено: %+v", ts)
+	}
+	s := ts[0].Stats
+	// длительность считается по s1(60 мин активного) и s3(10 мин) → медиана 35
 	if s.MedianDurationMin < 34 || s.MedianDurationMin > 36 {
 		t.Fatalf("MedianDurationMin = %v, want ~35", s.MedianDurationMin)
 	}
@@ -134,14 +148,42 @@ func TestSessionStats(t *testing.T) {
 	}
 }
 
-func TestSessionStatsEmpty(t *testing.T) {
+func TestSessionStatsByToolEmpty(t *testing.T) {
 	db := openTmp(t)
-	s, err := db.SessionStats(time.Unix(0, 0))
+	ts, err := db.SessionStatsByTool(time.Unix(0, 0))
 	if err != nil {
-		t.Fatalf("SessionStats: %v", err)
+		t.Fatalf("SessionStatsByTool: %v", err)
 	}
-	if len(s.Scatter) != 0 || len(s.Flagged) != 0 {
-		t.Fatalf("пустая БД не должна давать сессий: %+v", s)
+	if len(ts) != 0 {
+		t.Fatalf("пустая БД не должна давать инструментов: %+v", ts)
+	}
+}
+
+func TestSessionStatsByToolIdleGapExcluded(t *testing.T) {
+	db := openTmp(t)
+	base := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	since := base.Add(-24 * time.Hour)
+	// сессия с двумя событиями 90 мин друг от друга → единственный gap > 30 мин → активное время = 0
+	evs := []model.Event{
+		ev("d1", "sx", "/px", base, 1, 10, 0),
+		ev("d2", "sx", "/px", base.Add(90*time.Minute), 1, 10, 0),
+	}
+	if err := db.Insert(evs); err != nil {
+		t.Fatal(err)
+	}
+	ts, err := db.SessionStatsByTool(since)
+	if err != nil {
+		t.Fatalf("SessionStatsByTool: %v", err)
+	}
+	if len(ts) != 1 {
+		t.Fatalf("ожидался 1 инструмент, получено %d", len(ts))
+	}
+	if len(ts[0].Stats.Scatter) != 1 {
+		t.Fatalf("ожидалась 1 сессия в scatter, получено %d", len(ts[0].Stats.Scatter))
+	}
+	// gap 90 мин > 30 мин → не считается → активное время = 0
+	if ts[0].Stats.Scatter[0].DurationMin != 0 {
+		t.Fatalf("активная длительность должна быть 0 при gap > 30 мин, получено %v", ts[0].Stats.Scatter[0].DurationMin)
 	}
 }
 
@@ -184,7 +226,7 @@ func TestKPITotalsAndCostOverTime(t *testing.T) {
 	}
 }
 
-func TestSessionStatsUsesTotalTokens(t *testing.T) {
+func TestSessionStatsByToolUsesTotalTokens(t *testing.T) {
 	db := openTmp(t)
 	base := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
 	since := base.Add(-24 * time.Hour)
@@ -198,9 +240,13 @@ func TestSessionStatsUsesTotalTokens(t *testing.T) {
 	if err := db.Insert([]model.Event{e}); err != nil {
 		t.Fatal(err)
 	}
-	s, err := db.SessionStats(since)
+	ts, err := db.SessionStatsByTool(since)
 	if err != nil {
-		t.Fatalf("SessionStats: %v", err)
+		t.Fatalf("SessionStatsByTool: %v", err)
+	}
+	s := findTool(ts, "codex")
+	if s == nil {
+		t.Fatal("инструмент codex не найден в результате")
 	}
 	if len(s.Scatter) != 1 || s.Scatter[0].Tokens != 368 {
 		t.Fatalf("токены Codex-сессии должны браться из Total (368): %+v", s.Scatter)

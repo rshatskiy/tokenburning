@@ -1,5 +1,7 @@
 const token = new URLSearchParams(location.search).get("t") || "";
 let period = "30d";
+let lastSummary = null;
+let sessTool = null;
 
 const $ = (sel) => document.querySelector(sel);
 const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; };
@@ -80,6 +82,7 @@ function kpiCard(label, num, sub, accent) {
 }
 
 function render(s) {
+  lastSummary = s;
   renderPeriod();
   const app = $("#app"); app.innerHTML = "";
   const k = s.kpis;
@@ -105,17 +108,44 @@ function render(s) {
     <div class="shell"><div class="core"><div class="ctitle"><h3>Активность</h3><span class="meta">сессий/день</span></div><div style="font-size:30px;font-weight:600;font-variant-numeric:tabular-nums">${k.sessions}</div><div class="ksub">сессий за период</div></div></div>
   </div>`));
   // session analytics
-  const ss = s.sessions||{};
-  app.appendChild(el(`<div class="eyebrow">аналитика сессий · <b style="color:var(--acc)">сигнал, не точно</b> · самокоучинг</div>`));
-  const flagged = (ss.flagged||[]).map(f=>`<div class="flag"><div>${esc(f.project)} · ${Math.round(f.durationMin)} мин<div class="p-meta" style="color:var(--dim);font-family:var(--mono);font-size:10px">${f.iterations} итераций · ${fmtUSD(f.cost)}</div></div><span class="tag">застревание?</span></div>`).join("");
-  app.appendChild(el(`<div class="grid2">
-    <div class="shell"><div class="core"><div class="ctitle"><h3>Сессии: длительность × стоимость</h3><span class="meta">оранжевым — кандидаты на трение</span></div>${scatter(ss.scatter||[])}</div></div>
-    <div class="shell"><div class="core"><div class="ctitle"><h3>На сессию (медиана)</h3></div>
-      <div class="sess-stats"><div class="sess-stat"><div class="n">${Math.round(ss.medianDurationMin||0)}<span style="font-size:12px;color:var(--dim)">мин</span></div><div class="l">длительность</div><div class="h">p90 ${Math.round(ss.p90DurationMin||0)}м</div></div>
-      <div class="sess-stat"><div class="n">${fmtTok(ss.medianTokens||0)}</div><div class="l">токенов</div><div class="h">p90 ${fmtTok(ss.p90Tokens||0)}</div></div></div>
-      <div class="sess-stats" style="margin-top:8px"><div class="sess-stat"><div class="n">${Math.round(ss.medianIterations||0)}</div><div class="l">итераций/задача</div><div class="h">p90 ${Math.round(ss.p90Iterations||0)}</div></div>
-      <div class="sess-stat"><div class="n">${fmtUSD(ss.medianCost||0)}</div><div class="l">стоимость</div><div class="h">p90 ${fmtUSD(ss.p90Cost||0)}</div></div></div>
-      <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px"><div style="font-size:11px;color:var(--muted);margin-bottom:8px">Требуют внимания</div>${flagged||'<div class="subtitle">нет выраженных выбросов</div>'}</div>
+  app.appendChild(el(`<div id="sess"></div>`));
+  renderSessions(s);
+}
+
+function renderSessions(s) {
+  const host = $("#sess");
+  host.innerHTML = "";
+  host.appendChild(el(`<div class="eyebrow">аналитика сессий · <b style="color:var(--acc)">сигнал, не точно</b> · самокоучинг</div>`));
+  const tools = s.sessionsByTool || [];
+  if (!tools.length) { host.appendChild(el('<div class="subtitle">нет данных по сессиям</div>')); return; }
+  if (sessTool === null || !tools.find(t => t.tool === sessTool)) sessTool = tools[0].tool;
+
+  // селектор инструментов
+  const seg = el(`<div class="seg" style="margin-bottom:14px;width:max-content"></div>`);
+  for (const t of tools) {
+    const sp = el(`<span${t.tool === sessTool ? ' class="on"' : ''}>${esc(t.tool)}</span>`);
+    sp.onclick = () => { sessTool = t.tool; renderSessions(s); };
+    seg.appendChild(sp);
+  }
+  host.appendChild(seg);
+
+  const cur = tools.find(t => t.tool === sessTool) || tools[0];
+  const ss = cur.stats || {};
+  const note = cur.tool === "cursor"
+    ? '<div style="margin-top:14px;font-size:11px;color:var(--dim);font-family:var(--mono)">Cursor: токены/стоимость за серверным API — локально недоступны</div>'
+    : "";
+  const flagged = (ss.flagged || []).map(f =>
+    `<div class="flag"><div>${esc(f.project)} · ${Math.round(f.durationMin)} мин<div class="p-meta" style="color:var(--dim);font-family:var(--mono);font-size:10px">${f.iterations} итераций · ${fmtUSD(f.cost)}</div></div><span class="tag">застревание?</span></div>`
+  ).join("");
+  host.appendChild(el(`<div class="grid2">
+    <div class="shell"><div class="core"><div class="ctitle"><h3>Сессии: длительность × стоимость</h3><span class="meta">оранжевым — кандидаты на трение</span></div>${scatter(ss.scatter || [])}</div></div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>На сессию (медиана)</h3><span class="meta">${esc(cur.tool)}</span></div>
+      <div class="sess-stats"><div class="sess-stat"><div class="n">${Math.round(ss.medianDurationMin || 0)}<span style="font-size:12px;color:var(--dim)">мин</span></div><div class="l">активная длительность</div><div class="h">p90 ${Math.round(ss.p90DurationMin || 0)}м</div></div>
+      <div class="sess-stat"><div class="n">${fmtTok(ss.medianTokens || 0)}</div><div class="l">токенов</div><div class="h">p90 ${fmtTok(ss.p90Tokens || 0)}</div></div></div>
+      <div class="sess-stats" style="margin-top:8px"><div class="sess-stat"><div class="n">${Math.round(ss.medianIterations || 0)}</div><div class="l">обращений к модели</div><div class="h">p90 ${Math.round(ss.p90Iterations || 0)}</div></div>
+      <div class="sess-stat"><div class="n">${fmtUSD(ss.medianCost || 0)}</div><div class="l">стоимость</div><div class="h">p90 ${fmtUSD(ss.p90Cost || 0)}</div></div></div>
+      ${note}
+      <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px"><div style="font-size:11px;color:var(--muted);margin-bottom:8px">Требуют внимания</div>${flagged || '<div class="subtitle">нет выраженных выбросов</div>'}</div>
     </div></div>
   </div>`));
 }
