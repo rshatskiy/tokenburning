@@ -8,3 +8,6 @@
 /.lens/
 # OS
 .DS_Store
+
+# Installed design-taste skills (tooling)
+.agents/
