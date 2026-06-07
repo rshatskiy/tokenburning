@@ -1,0 +1,2 @@
+{"type":"assistant","requestId":"req_TEST001","sessionId":"sess-1","cwd":"/Users/dev/proj","timestamp":"2026-06-07T10:00:00.000Z","message":{"id":"msg_1","model":"claude-opus-4-7","usage":{"input_tokens":6,"output_tokens":204,"cache_read_input_tokens":18140,"cache_creation_input_tokens":20012,"cache_creation":{"ephemeral_1h_input_tokens":20012,"ephemeral_5m_input_tokens":0},"service_tier":"standard"}}}
+{"type":"user","sessionId":"sess-1","timestamp":"2026-06-07T10:00:01.000Z","message":{"role":"user","content":"hi"}}
