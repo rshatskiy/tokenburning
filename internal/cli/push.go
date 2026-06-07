@@ -32,6 +32,11 @@ func newPushCmd() *cobra.Command {
 			if len(cats) == 0 {
 				return fmt.Errorf("укажите хотя бы одну категорию согласия: --breadth и/или --depth")
 			}
+			switch period {
+			case "7d", "30d", "90d", "all":
+			default:
+				return fmt.Errorf("неизвестный период %q (допустимо: 7d, 30d, 90d, all)", period)
+			}
 			home, err := os.UserHomeDir()
 			if err != nil {
 				return err

@@ -1,6 +1,7 @@
 package aggregate
 
 import (
+	"strings"
 	"time"
 
 	"github.com/rshatskiy/tokenburning/internal/store"
@@ -72,12 +73,26 @@ func has(cats []string, c string) bool {
 	return false
 }
 
-// normalizeModel прячет неидентифицирующе-бесполезные/редкие имена в "other".
+// knownModelPrefixes — публичные семейства моделей; всё прочее (включая кастомные
+// приватные алиасы) обобщается в "other", чтобы не раскрывать необычные имена.
+var knownModelPrefixes = []string{
+	"claude-", "claude_", "gpt-", "gpt5", "o1", "o3", "o4", "gemini", "llama",
+	"mistral", "deepseek", "grok", "qwen", "sonnet", "opus", "haiku",
+}
+
+// normalizeModel оставляет только распознаваемые публичные имена; пустые/unknown/
+// synthetic и любые нераспознанные строки → "other".
 func normalizeModel(m string) string {
 	if m == "" || m == "unknown" || m == "<synthetic>" {
 		return "other"
 	}
-	return m
+	lm := strings.ToLower(m)
+	for _, p := range knownModelPrefixes {
+		if strings.HasPrefix(lm, p) {
+			return m
+		}
+	}
+	return "other"
 }
 
 // Build собирает payload по выбранным категориям. project_key и точные ts не включаются.
