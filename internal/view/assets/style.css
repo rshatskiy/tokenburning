@@ -393,3 +393,26 @@ header {
     animation: none !important;
   }
 }
+
+/* tooltip — подпись данных у курсора при наведении на графики */
+.tooltip {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .12s ease;
+  background: rgba(20, 18, 16, .96);
+  border: 1px solid rgba(251, 146, 60, .45);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .5);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--ink);
+  max-width: 260px;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+}
+.tooltip b { color: var(--acc); font-weight: 600; }
+[data-tip] { cursor: crosshair; }
