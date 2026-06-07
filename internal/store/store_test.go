@@ -1,0 +1,45 @@
+package store
+
+import (
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/lens/lens/internal/model"
+)
+
+func sampleEvent(id string) model.Event {
+	return model.Event{
+		EventID: id, Tool: model.ToolClaudeCode, TS: time.Now(),
+		Model: "claude-opus-4-7", BillingMode: model.BillingFlatEquivalent,
+		Cost:   model.Cost{Amount: 1.5, Currency: "USD", Basis: model.BasisActual, PricingVersion: "2026-06-07"},
+		Tokens: model.Tokens{Input: 10, Output: 20},
+	}
+}
+
+func TestInsertIsIdempotent(t *testing.T) {
+	db, err := Open(filepath.Join(t.TempDir(), "lens.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer db.Close()
+
+	for i := 0; i < 3; i++ { // три раза один и тот же event_id
+		if err := db.Insert([]model.Event{sampleEvent("req_A")}); err != nil {
+			t.Fatalf("Insert: %v", err)
+		}
+	}
+	rows, err := db.SummaryByModel()
+	if err != nil {
+		t.Fatalf("SummaryByModel: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("строк сводки %d, ожидалось 1", len(rows))
+	}
+	if rows[0].Events != 1 {
+		t.Fatalf("Events = %d, ожидалось 1 (идемпотентность нарушена)", rows[0].Events)
+	}
+	if rows[0].CostAmount != 1.5 {
+		t.Fatalf("CostAmount = %f, ожидалось 1.5", rows[0].CostAmount)
+	}
+}
