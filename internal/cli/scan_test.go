@@ -24,8 +24,8 @@ func TestRunScanProducesSummary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runScan: %v", err)
 	}
-	if !strings.Contains(out, "claude-opus-4-7") || !strings.Contains(out, "90.0") {
-		t.Fatalf("в выводе нет ожидаемой модели/стоимости 90.0:\n%s", out)
+	if !strings.Contains(out, "claude-opus-4-7") || !strings.Contains(out, "30.0") {
+		t.Fatalf("в выводе нет ожидаемой модели/стоимости 30.0:\n%s", out)
 	}
 }
 
@@ -79,18 +79,18 @@ func TestRescanAfterRewriteNoDuplicateCounts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// req_1 (15 USD) + req_2 + req_3 = 3 события, по 15 USD = 45.0; req_2 не задвоен.
-	if !strings.Contains(out, "45.0") {
-		t.Fatalf("ожидалось 3 уникальных события (45.0 USD), идемпотентность нарушена:\n%s", out)
+	// req_1 ($5) + req_2 + req_3 = 3 события, по $5 (1M input × $5/M opus) = 15.0; req_2 не задвоен.
+	if !strings.Contains(out, "15.0") {
+		t.Fatalf("ожидалось 3 уникальных события (15.0 USD), идемпотентность нарушена:\n%s", out)
 	}
-	// Колонка EVENTS=3 для opus (формат %8d): ищем "3" перед стоимостью 45.0 в той же строке.
+	// Колонка EVENTS=3 для opus (формат %8d): ищем "3" перед стоимостью 15.0 в той же строке.
 	if !strings.Contains(out, "claude-opus-4-7") {
 		t.Fatalf("нет строки opus:\n%s", out)
 	}
 	for _, ln := range strings.Split(out, "\n") {
 		if strings.Contains(ln, "claude-opus-4-7") {
-			if !strings.Contains(ln, "3") || !strings.Contains(ln, "45.0") {
-				t.Fatalf("строка opus должна иметь EVENTS=3 и COST=45.0: %q", ln)
+			if !strings.Contains(ln, "3") || !strings.Contains(ln, "15.0") {
+				t.Fatalf("строка opus должна иметь EVENTS=3 и COST=15.0: %q", ln)
 			}
 		}
 	}
