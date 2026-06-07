@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/rshatskiy/tokenburning/internal/model"
 	_ "modernc.org/sqlite"
@@ -93,14 +94,14 @@ func nullStr(s string) any {
 
 // ModelSummary — агрегат стоимости по модели.
 type ModelSummary struct {
-	Model      string
-	Events     int64
-	CostAmount float64
+	Model      string  `json:"model"`
+	Events     int64   `json:"events"`
+	CostAmount float64 `json:"cost"`
 }
 
-func (d *DB) SummaryByModel() ([]ModelSummary, error) {
+func (d *DB) SummaryByModel(since time.Time) ([]ModelSummary, error) {
 	rows, err := d.db.Query(`SELECT model, COUNT(*), COALESCE(SUM(cost_amount),0)
-        FROM events GROUP BY model ORDER BY 3 DESC`)
+        FROM events WHERE ts >= ? GROUP BY model ORDER BY 3 DESC`, since.Unix())
 	if err != nil {
 		return nil, err
 	}
@@ -118,17 +119,17 @@ func (d *DB) SummaryByModel() ([]ModelSummary, error) {
 
 // ToolSummary — агрегат по инструменту (кросс-тул вид).
 type ToolSummary struct {
-	Tool       string
-	Events     int64
-	Tokens     int64
-	CostAmount float64
+	Tool       string  `json:"tool"`
+	Events     int64   `json:"events"`
+	Tokens     int64   `json:"tokens"`
+	CostAmount float64 `json:"cost"`
 }
 
-func (d *DB) SummaryByTool() ([]ToolSummary, error) {
+func (d *DB) SummaryByTool(since time.Time) ([]ToolSummary, error) {
 	rows, err := d.db.Query(`SELECT tool, COUNT(*),
         COALESCE(SUM(tok_input+tok_output+tok_cache_read+tok_cache_1h+tok_cache_5m+tok_reasoning),0),
         COALESCE(SUM(cost_amount),0)
-        FROM events GROUP BY tool ORDER BY 4 DESC, 3 DESC`)
+        FROM events WHERE ts >= ? GROUP BY tool ORDER BY 4 DESC, 3 DESC`, since.Unix())
 	if err != nil {
 		return nil, err
 	}
