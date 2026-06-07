@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -16,6 +17,40 @@ import (
 )
 
 var _ adapter.Adapter = (*Adapter)(nil)
+
+var rolloutUUIDRe = regexp.MustCompile(`([0-9a-fA-F-]{36})\.jsonl$`)
+
+// sessionIDFromName извлекает trailing UUID из имени rollout-<ts>-<uuid>.jsonl.
+func sessionIDFromName(name string) string {
+	m := rolloutUUIDRe.FindStringSubmatch(name)
+	if len(m) == 2 {
+		return m[1]
+	}
+	return ""
+}
+
+// loadImportedThreadIDs читает <codexHome>/external_agent_session_imports.json и
+// возвращает множество imported_thread_id (best-effort; при отсутствии файла — пусто).
+func loadImportedThreadIDs(codexHome string) map[string]bool {
+	set := map[string]bool{}
+	b, err := os.ReadFile(filepath.Join(codexHome, "external_agent_session_imports.json"))
+	if err != nil {
+		return set
+	}
+	var doc struct {
+		Records []struct {
+			ImportedThreadID string `json:"imported_thread_id"`
+		} `json:"records"`
+	}
+	if json.Unmarshal(b, &doc) == nil {
+		for _, r := range doc.Records {
+			if r.ImportedThreadID != "" {
+				set[r.ImportedThreadID] = true
+			}
+		}
+	}
+	return set
+}
 
 type Adapter struct{}
 
@@ -38,11 +73,15 @@ func (a *Adapter) Discover(paths platform.Paths) ([]adapter.Source, error) {
 	if root == "" {
 		return out, nil
 	}
+	imported := loadImportedThreadIDs(filepath.Dir(root))
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
 		if !d.IsDir() && strings.HasPrefix(d.Name(), "rollout-") && filepath.Ext(path) == ".jsonl" {
+			if id := sessionIDFromName(d.Name()); id != "" && imported[id] {
+				return nil // импортированная история Claude — уже учтена адаптером claude_code
+			}
 			out = append(out, adapter.Source{Path: path})
 		}
 		return nil
