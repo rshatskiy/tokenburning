@@ -93,9 +93,9 @@ func nullStr(s string) any {
 
 // ModelSummary — агрегат стоимости по модели.
 type ModelSummary struct {
-	Model      string
-	Events     int64
-	CostAmount float64
+	Model      string  `json:"model"`
+	Events     int64   `json:"events"`
+	CostAmount float64 `json:"cost"`
 }
 
 func (d *DB) SummaryByModel() ([]ModelSummary, error) {
@@ -118,10 +118,10 @@ func (d *DB) SummaryByModel() ([]ModelSummary, error) {
 
 // ToolSummary — агрегат по инструменту (кросс-тул вид).
 type ToolSummary struct {
-	Tool       string
-	Events     int64
-	Tokens     int64
-	CostAmount float64
+	Tool       string  `json:"tool"`
+	Events     int64   `json:"events"`
+	Tokens     int64   `json:"tokens"`
+	CostAmount float64 `json:"cost"`
 }
 
 func (d *DB) SummaryByTool() ([]ToolSummary, error) {

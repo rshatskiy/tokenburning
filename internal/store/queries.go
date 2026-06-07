@@ -25,12 +25,12 @@ func percentile(xs []float64, p float64) float64 {
 }
 
 type KPI struct {
-	Cost            float64
-	Tokens          int64
-	CacheReadTokens int64
-	ActiveDays      int
-	Sessions        int
-	Tools           []string
+	Cost            float64  `json:"cost"`
+	Tokens          int64    `json:"tokens"`
+	CacheReadTokens int64    `json:"cacheReadTokens"`
+	ActiveDays      int      `json:"activeDays"`
+	Sessions        int      `json:"sessions"`
+	Tools           []string `json:"tools"`
 }
 
 // KPITotals считает сводные KPI по событиям начиная с since.
@@ -64,8 +64,8 @@ func (d *DB) KPITotals(since time.Time) (KPI, error) {
 }
 
 type DayCost struct {
-	Date string
-	Cost float64
+	Date string  `json:"date"`
+	Cost float64 `json:"cost"`
 }
 
 // CostOverTime — стоимость по дням (UTC) начиная с since.
@@ -88,10 +88,10 @@ func (d *DB) CostOverTime(since time.Time) ([]DayCost, error) {
 }
 
 type ProjectSummary struct {
-	Project  string
-	Cost     float64
-	Sessions int
-	Events   int
+	Project  string  `json:"project"`
+	Cost     float64 `json:"cost"`
+	Sessions int     `json:"sessions"`
+	Events   int     `json:"events"`
 }
 
 // SummaryByProject — агрегат по project_key начиная с since, по убыванию стоимости.
@@ -115,8 +115,8 @@ func (d *DB) SummaryByProject(since time.Time) ([]ProjectSummary, error) {
 }
 
 type DaySessions struct {
-	Date     string
-	Sessions int
+	Date     string `json:"date"`
+	Sessions int    `json:"sessions"`
 }
 
 // ActivityByDay — число сессий по дням (UTC) начиная с since.
@@ -139,21 +139,25 @@ func (d *DB) ActivityByDay(since time.Time) ([]DaySessions, error) {
 }
 
 type SessionPoint struct {
-	Project     string
-	DurationMin float64
-	Iterations  int
-	Cost        float64
-	Tokens      int64
-	Outlier     bool
+	Project     string  `json:"project"`
+	DurationMin float64 `json:"durationMin"`
+	Iterations  int     `json:"iterations"`
+	Cost        float64 `json:"cost"`
+	Tokens      int64   `json:"tokens"`
+	Outlier     bool    `json:"outlier"`
 }
 
 type SessionStatsResult struct {
-	MedianDurationMin, P90DurationMin float64
-	MedianTokens, P90Tokens           float64
-	MedianIterations, P90Iterations   float64
-	MedianCost, P90Cost               float64
-	Scatter                           []SessionPoint
-	Flagged                           []SessionPoint
+	MedianDurationMin float64        `json:"medianDurationMin"`
+	P90DurationMin    float64        `json:"p90DurationMin"`
+	MedianTokens      float64        `json:"medianTokens"`
+	P90Tokens         float64        `json:"p90Tokens"`
+	MedianIterations  float64        `json:"medianIterations"`
+	P90Iterations     float64        `json:"p90Iterations"`
+	MedianCost        float64        `json:"medianCost"`
+	P90Cost           float64        `json:"p90Cost"`
+	Scatter           []SessionPoint `json:"scatter"`
+	Flagged           []SessionPoint `json:"flagged"`
 }
 
 // SessionStats агрегирует сессии (group by session_id) и считает сигнальные метрики.
