@@ -1,0 +1,2 @@
+{"type":"assistant","requestId":"req_OK","sessionId":"s","cwd":"/p","timestamp":"2026-06-07T10:00:00.000Z","message":{"id":"m","model":"claude-opus-4-7","usage":{"input_tokens":1,"output_tokens":2}}}
+{"type":"assistant","requestId":"req_BROKEN", THIS IS NOT VALID JSON
