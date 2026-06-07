@@ -29,7 +29,7 @@ func Open(path string) (*DB, error) {
 func (d *DB) Close() error { return d.db.Close() }
 
 func (d *DB) migrate() error {
-	_, err := d.db.Exec(`
+	if _, err := d.db.Exec(`
 CREATE TABLE IF NOT EXISTS events (
     event_id        TEXT PRIMARY KEY,
     tool            TEXT NOT NULL,
@@ -46,14 +46,20 @@ CREATE TABLE IF NOT EXISTS events (
     tok_cache_1h    INTEGER NOT NULL DEFAULT 0,
     tok_cache_5m    INTEGER NOT NULL DEFAULT 0,
     tok_reasoning   INTEGER NOT NULL DEFAULT 0,
+    tok_total       INTEGER NOT NULL DEFAULT 0,
     session_id      TEXT,
     project_key     TEXT,
     extra_raw       BLOB
 );
 CREATE INDEX IF NOT EXISTS idx_events_model ON events(model);
 CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);
-`)
-	return err
+`); err != nil {
+		return err
+	}
+	// Идемпотентная миграция: добавляем tok_total если её ещё нет (существующие БД до этой версии).
+	// SQLite не поддерживает ALTER TABLE ADD COLUMN IF NOT EXISTS, поэтому игнорируем ошибку дублирования.
+	d.db.Exec(`ALTER TABLE events ADD COLUMN tok_total INTEGER NOT NULL DEFAULT 0`) //nolint:errcheck
+	return nil
 }
 
 // Insert записывает события идемпотентно (INSERT OR IGNORE по event_id) одной транзакцией.
@@ -68,8 +74,8 @@ func (d *DB) Insert(events []model.Event) error {
 	defer tx.Rollback()
 	stmt, err := tx.Prepare(`INSERT OR IGNORE INTO events
         (event_id,tool,ts,model,billing_mode,cost_amount,cost_currency,cost_basis,pricing_version,
-         tok_input,tok_output,tok_cache_read,tok_cache_1h,tok_cache_5m,tok_reasoning,session_id,project_key,extra_raw)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+         tok_input,tok_output,tok_cache_read,tok_cache_1h,tok_cache_5m,tok_reasoning,tok_total,session_id,project_key,extra_raw)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
 	if err != nil {
 		return err
 	}
@@ -77,7 +83,7 @@ func (d *DB) Insert(events []model.Event) error {
 	for _, e := range events {
 		if _, err := stmt.Exec(e.EventID, string(e.Tool), e.TS.Unix(), e.Model, string(e.BillingMode),
 			e.Cost.Amount, e.Cost.Currency, string(e.Cost.Basis), e.Cost.PricingVersion,
-			e.Tokens.Input, e.Tokens.Output, e.Tokens.CacheRead, e.Tokens.Cache1h, e.Tokens.Cache5m, e.Tokens.Reasoning,
+			e.Tokens.Input, e.Tokens.Output, e.Tokens.CacheRead, e.Tokens.Cache1h, e.Tokens.Cache5m, e.Tokens.Reasoning, e.Tokens.Total,
 			nullStr(e.SessionID), nullStr(e.ProjectKey), e.ExtraRaw); err != nil {
 			return err
 		}
@@ -127,7 +133,7 @@ type ToolSummary struct {
 
 func (d *DB) SummaryByTool(since time.Time) ([]ToolSummary, error) {
 	rows, err := d.db.Query(`SELECT tool, COUNT(*),
-        COALESCE(SUM(tok_input+tok_output+tok_cache_read+tok_cache_1h+tok_cache_5m+tok_reasoning),0),
+        COALESCE(SUM(MAX(tok_total, tok_input+tok_output+tok_cache_read+tok_cache_1h+tok_cache_5m+tok_reasoning)),0),
         COALESCE(SUM(cost_amount),0)
         FROM events WHERE ts >= ? GROUP BY tool ORDER BY 4 DESC, 3 DESC`, since.Unix())
 	if err != nil {

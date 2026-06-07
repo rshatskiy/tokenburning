@@ -40,7 +40,7 @@ func (d *DB) KPITotals(since time.Time) (KPI, error) {
 	// исключает события без session_id (NULL) — это намеренно: считаем только известные сессии.
 	row := d.db.QueryRow(`SELECT
         COALESCE(SUM(cost_amount),0),
-        COALESCE(SUM(tok_input+tok_output+tok_cache_read+tok_cache_1h+tok_cache_5m+tok_reasoning),0),
+        COALESCE(SUM(MAX(tok_total, tok_input+tok_output+tok_cache_read+tok_cache_1h+tok_cache_5m+tok_reasoning)),0),
         COALESCE(SUM(tok_cache_read),0),
         COUNT(DISTINCT date(ts,'unixepoch')),
         COUNT(DISTINCT session_id)

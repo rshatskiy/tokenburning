@@ -100,22 +100,27 @@ func (a *Adapter) Collect(src adapter.Source, _ adapter.Cursor, emit adapter.Emi
 			if err := json.Unmarshal(line, &rl); err != nil {
 				quarantine(append([]byte(nil), line...), err)
 			} else {
-				switch rl.Type {
-				case "session_meta":
+				if rl.Type == "session_meta" {
 					if json.Unmarshal(rl.Payload, &meta) == nil {
 						haveMeta = true
 					}
-				case "token_count":
-					var tc tokenCountPayload
-					if json.Unmarshal(rl.Payload, &tc) == nil {
-						tk.Input += tc.Info.Last.Input
-						tk.Output += tc.Info.Last.Output
-						tk.CacheRead += tc.Info.Last.Cached
-						tk.Reasoning += tc.Info.Last.Reasoning
-						if tc.Info.Total.Total > 0 {
-							lastTotal = tc.Info.Total.Total
+				} else {
+					// token_count — это тип ВНУТРИ payload (event_msg / response_item и т.п.)
+					var pt struct {
+						Type string `json:"type"`
+					}
+					if json.Unmarshal(rl.Payload, &pt) == nil && pt.Type == "token_count" {
+						var tc tokenCountPayload
+						if json.Unmarshal(rl.Payload, &tc) == nil {
+							tk.Input += tc.Info.Last.Input
+							tk.Output += tc.Info.Last.Output
+							tk.CacheRead += tc.Info.Last.Cached
+							tk.Reasoning += tc.Info.Last.Reasoning
+							if tc.Info.Total.Total > 0 {
+								lastTotal = tc.Info.Total.Total
+							}
+							sawTokens = true
 						}
-						sawTokens = true
 					}
 				}
 			}
