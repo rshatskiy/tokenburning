@@ -11,6 +11,8 @@ import (
 
 	"github.com/rshatskiy/tokenburning/internal/adapter"
 	"github.com/rshatskiy/tokenburning/internal/adapter/claudecode"
+	"github.com/rshatskiy/tokenburning/internal/adapter/codex"
+	"github.com/rshatskiy/tokenburning/internal/adapter/cursor"
 	"github.com/rshatskiy/tokenburning/internal/model"
 	"github.com/rshatskiy/tokenburning/internal/platform"
 	"github.com/rshatskiy/tokenburning/internal/pricing"
@@ -58,7 +60,8 @@ func runScan(dbPath string) (string, error) {
 
 	adapters := []adapter.Adapter{
 		claudecode.New(),
-		// codex и cursor добавляются в Task 4 и Task 5
+		codex.New(),
+		cursor.New(),
 	}
 
 	// TODO slice-2: стримить инжест чанками, если корпус вырастет за ~100k событий (сейчас весь batch в памяти).
