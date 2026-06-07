@@ -38,6 +38,15 @@ func TestPercentile(t *testing.T) {
 	if percentile(nil, 50) != 0 {
 		t.Fatal("percentile(nil) should be 0")
 	}
+	if percentile([]float64{7}, 50) != 7 {
+		t.Fatal("single element percentile should return that element")
+	}
+	if percentile([]float64{1, 3}, 100) != 3 {
+		t.Fatal("p100 of {1,3} should be 3")
+	}
+	if percentile([]float64{1, 3}, 0) != 1 {
+		t.Fatal("p0 of {1,3} should be 1")
+	}
 }
 
 func TestKPITotalsAndCostOverTime(t *testing.T) {

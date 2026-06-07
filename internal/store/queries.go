@@ -36,6 +36,8 @@ type KPI struct {
 // KPITotals считает сводные KPI по событиям начиная с since.
 func (d *DB) KPITotals(since time.Time) (KPI, error) {
 	var k KPI
+	// Дни/сессии считаются по UTC-дате (date(ts,'unixepoch')); COUNT(DISTINCT session_id)
+	// исключает события без session_id (NULL) — это намеренно: считаем только известные сессии.
 	row := d.db.QueryRow(`SELECT
         COALESCE(SUM(cost_amount),0),
         COALESCE(SUM(tok_input+tok_output+tok_cache_read+tok_cache_1h+tok_cache_5m+tok_reasoning),0),
