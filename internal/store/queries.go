@@ -160,49 +160,23 @@ type SessionStatsResult struct {
 	Flagged           []SessionPoint `json:"flagged"`
 }
 
-// SessionStats агрегирует сессии (group by session_id) и считает сигнальные метрики.
-func (d *DB) SessionStats(since time.Time) (SessionStatsResult, error) {
+// computeSessionStats считает медианы/p90 и выбросы для набора сессий одного инструмента.
+// Длительность/итерации — только по многособытийным сессиям (iters>=2); токены/стоимость — по всем.
+func computeSessionStats(points []SessionPoint) SessionStatsResult {
 	var res SessionStatsResult
-	rows, err := d.db.Query(`SELECT COALESCE(project_key,'(нет)'),
-        MIN(ts), MAX(ts),
-        SUM(MAX(tok_total, tok_input+tok_output+tok_cache_read+tok_cache_1h+tok_cache_5m+tok_reasoning)),
-        SUM(cost_amount), COUNT(*)
-        FROM events WHERE ts >= ? GROUP BY session_id`, since.Unix())
-	if err != nil {
-		return res, err
-	}
-	defer rows.Close()
-
-	var points []SessionPoint
 	var durMulti, iterMulti, tokAll, costAll []float64
-	for rows.Next() {
-		var proj string
-		var minTs, maxTs, tokens, iters int64
-		var cost float64
-		if err := rows.Scan(&proj, &minTs, &maxTs, &tokens, &cost, &iters); err != nil {
-			return res, err
-		}
-		durMin := float64(maxTs-minTs) / 60.0
-		p := SessionPoint{Project: proj, DurationMin: durMin, Iterations: int(iters), Cost: cost, Tokens: tokens}
-		points = append(points, p)
-		tokAll = append(tokAll, float64(tokens))
-		costAll = append(costAll, cost)
-		if iters >= 2 { // длительность/итерации — только многособытийные сессии
-			durMulti = append(durMulti, durMin)
-			iterMulti = append(iterMulti, float64(iters))
+	for _, p := range points {
+		tokAll = append(tokAll, float64(p.Tokens))
+		costAll = append(costAll, p.Cost)
+		if p.Iterations >= 2 {
+			durMulti = append(durMulti, p.DurationMin)
+			iterMulti = append(iterMulti, float64(p.Iterations))
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return res, err
-	}
-
 	res.MedianDurationMin, res.P90DurationMin = percentile(durMulti, 50), percentile(durMulti, 90)
 	res.MedianIterations, res.P90Iterations = percentile(iterMulti, 50), percentile(iterMulti, 90)
 	res.MedianTokens, res.P90Tokens = percentile(tokAll, 50), percentile(tokAll, 90)
 	res.MedianCost, res.P90Cost = percentile(costAll, 50), percentile(costAll, 90)
-
-	// Порог должен быть положительным, иначе при нулевых данных (Codex/Cursor: $0,
-	// одно-событийные сессии) 0>=0 пометит выбросами все сессии.
 	hasDur := len(durMulti) > 0
 	for i := range points {
 		costOut := res.P90Cost > 0 && points[i].Cost >= res.P90Cost
@@ -210,8 +184,6 @@ func (d *DB) SessionStats(since time.Time) (SessionStatsResult, error) {
 		points[i].Outlier = costOut || durOut
 	}
 	res.Scatter = points
-
-	// flagged: длинные И дорогие, по убыванию стоимости, до 3
 	var flagged []SessionPoint
 	for _, p := range points {
 		if p.Iterations >= 2 && p.Cost > 0 && p.DurationMin > 0 &&
@@ -224,5 +196,67 @@ func (d *DB) SessionStats(since time.Time) (SessionStatsResult, error) {
 		flagged = flagged[:3]
 	}
 	res.Flagged = flagged
-	return res, nil
+	return res
+}
+
+type ToolSessions struct {
+	Tool  string             `json:"tool"`
+	Stats SessionStatsResult `json:"stats"`
+}
+
+// SessionStatsByTool группирует сессии по инструменту и считает аналитику отдельно
+// для каждого. Длительность сессии — АКТИВНОЕ время: сумма промежутков между соседними
+// событиями, где промежуток <= 30 мин (большие паузы = простой, не считаются).
+func (d *DB) SessionStatsByTool(since time.Time) ([]ToolSessions, error) {
+	rows, err := d.db.Query(`
+WITH ev AS (
+  SELECT tool, session_id,
+    COALESCE(project_key,'(нет)') AS proj,
+    cost_amount AS cost,
+    MAX(tok_total, tok_input+tok_output+tok_cache_read+tok_cache_1h+tok_cache_5m+tok_reasoning) AS toks,
+    ts - LAG(ts) OVER (PARTITION BY session_id ORDER BY ts) AS gap
+  FROM events WHERE ts >= ?
+)
+SELECT tool, MIN(proj),
+  SUM(CASE WHEN gap > 0 AND gap <= 1800 THEN gap ELSE 0 END)/60.0,
+  SUM(toks), SUM(cost), COUNT(*)
+FROM ev GROUP BY tool, session_id`, since.Unix())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	byTool := map[string][]SessionPoint{}
+	var order []string
+	for rows.Next() {
+		var tool, proj string
+		var activeMin, cost float64
+		var tokens, iters int64
+		if err := rows.Scan(&tool, &proj, &activeMin, &tokens, &cost, &iters); err != nil {
+			return nil, err
+		}
+		if _, ok := byTool[tool]; !ok {
+			order = append(order, tool)
+		}
+		byTool[tool] = append(byTool[tool], SessionPoint{
+			Project: proj, DurationMin: activeMin, Iterations: int(iters), Cost: cost, Tokens: tokens,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// claude_code первым (самый богатый), остальные по алфавиту
+	sort.SliceStable(order, func(i, j int) bool {
+		if order[i] == "claude_code" {
+			return true
+		}
+		if order[j] == "claude_code" {
+			return false
+		}
+		return order[i] < order[j]
+	})
+	var out []ToolSessions
+	for _, t := range order {
+		out = append(out, ToolSessions{Tool: t, Stats: computeSessionStats(byTool[t])})
+	}
+	return out, nil
 }

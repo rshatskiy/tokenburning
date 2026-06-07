@@ -23,14 +23,14 @@ func parsePeriodDays(p string) int {
 }
 
 type Summary struct {
-	Period       string                   `json:"period"`
-	KPIs         store.KPI                `json:"kpis"`
-	CostOverTime []store.DayCost          `json:"costOverTime"`
-	ByTool       []store.ToolSummary      `json:"byTool"`
-	ByModel      []store.ModelSummary     `json:"byModel"`
-	TopProjects  []store.ProjectSummary   `json:"topProjects"`
-	Activity     []store.DaySessions      `json:"activity"`
-	Sessions     store.SessionStatsResult `json:"sessions"`
+	Period         string                 `json:"period"`
+	KPIs           store.KPI              `json:"kpis"`
+	CostOverTime   []store.DayCost        `json:"costOverTime"`
+	ByTool         []store.ToolSummary    `json:"byTool"`
+	ByModel        []store.ModelSummary   `json:"byModel"`
+	TopProjects    []store.ProjectSummary `json:"topProjects"`
+	Activity       []store.DaySessions    `json:"activity"`
+	SessionsByTool []store.ToolSessions   `json:"sessionsByTool"`
 }
 
 // BuildSummary собирает все агрегаты за период в один объект для фронта.
@@ -61,7 +61,7 @@ func BuildSummary(db *store.DB, period string) (Summary, error) {
 	if s.Activity, err = db.ActivityByDay(since); err != nil {
 		return s, err
 	}
-	if s.Sessions, err = db.SessionStats(since); err != nil {
+	if s.SessionsByTool, err = db.SessionStatsByTool(since); err != nil {
 		return s, err
 	}
 	if len(s.TopProjects) > 8 {
