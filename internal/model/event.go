@@ -38,7 +38,9 @@ type Tokens struct {
 	Total     int64 `json:"total"`
 }
 
-// TotalOrSum возвращает Total, если он задан, иначе сумму известных компонентов.
+// TotalOrSum возвращает Total, если источник его сообщил (ненулевой),
+// иначе сумму известных компонентов. Сообщённый источником Total == 0
+// трактуется как «не задан»; у реальных событий Total > 0.
 func (t Tokens) TotalOrSum() int64 {
 	if t.Total > 0 {
 		return t.Total
@@ -77,9 +79,9 @@ const (
 
 // Capabilities декларирует, какие данные адаптер реально отдаёт.
 type Capabilities struct {
-	HasTokens     Fidelity
-	HasCache      bool
-	HasSessions   bool
-	HasAcceptRate bool
-	BillingModes  []BillingMode
+	HasTokens     Fidelity      `json:"has_tokens"`
+	HasCache      bool          `json:"has_cache"`
+	HasSessions   bool          `json:"has_sessions"`
+	HasAcceptRate bool          `json:"has_accept_rate"`
+	BillingModes  []BillingMode `json:"billing_modes"`
 }
