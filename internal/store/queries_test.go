@@ -85,6 +85,43 @@ func TestSummaryByProjectAndActivity(t *testing.T) {
 	}
 }
 
+func TestSessionStats(t *testing.T) {
+	db := openTmp(t)
+	base := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	since := base.Add(-48 * time.Hour)
+	var evs []model.Event
+	// сессия s1: 3 события, длительность 60 мин, стоимость 30
+	evs = append(evs,
+		ev("a1", "s1", "/p1", base, 10, 100, 0),
+		ev("a2", "s1", "/p1", base.Add(30*time.Minute), 10, 100, 0),
+		ev("a3", "s1", "/p1", base.Add(60*time.Minute), 10, 100, 0))
+	// сессия s2: 1 событие (как Codex), длительность 0, стоимость 5
+	evs = append(evs, ev("b1", "s2", "/p2", base, 5, 50, 0))
+	// сессия s3: 2 события, длительность 10 мин, стоимость 2
+	evs = append(evs,
+		ev("c1", "s3", "/p3", base, 1, 10, 0),
+		ev("c2", "s3", "/p3", base.Add(10*time.Minute), 1, 10, 0))
+	if err := db.Insert(evs); err != nil {
+		t.Fatal(err)
+	}
+	s, err := db.SessionStats(since)
+	if err != nil {
+		t.Fatalf("SessionStats: %v", err)
+	}
+	// длительность считается по s1(60) и s3(10) → медиана 35
+	if s.MedianDurationMin < 34 || s.MedianDurationMin > 36 {
+		t.Fatalf("MedianDurationMin = %v, want ~35", s.MedianDurationMin)
+	}
+	// в scatter — все 3 сессии
+	if len(s.Scatter) != 3 {
+		t.Fatalf("scatter точек %d, want 3", len(s.Scatter))
+	}
+	// самая дорогая сессия s1 должна быть среди flagged
+	if len(s.Flagged) == 0 || s.Flagged[0].Cost != 30 {
+		t.Fatalf("flagged[0] должна быть s1 ($30): %+v", s.Flagged)
+	}
+}
+
 func TestKPITotalsAndCostOverTime(t *testing.T) {
 	db := openTmp(t)
 	base := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
