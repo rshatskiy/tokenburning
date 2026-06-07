@@ -6,6 +6,10 @@ const el = (html) => { const t = document.createElement("template"); t.innerHTML
 const esc = (s) => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 const fmtUSD = (n) => "$" + Math.round(n).toLocaleString("ru-RU");
 const fmtTok = (n) => n >= 1e9 ? (n/1e9).toFixed(1)+"B" : n >= 1e6 ? (n/1e6).toFixed(0)+"M" : n.toLocaleString("ru-RU");
+const fmtDate = (s) => { const p = String(s).split("-"); return p.length === 3 ? p[2]+"."+p[1] : s; };
+// tip-строка уже html-безопасна (имена через esc, теги <br>/<b> литеральные);
+// для атрибута data-tip остаётся экранировать только кавычки
+const escAttr = (s) => String(s).replace(/"/g, "&quot;");
 
 function renderPeriod() {
   const seg = $("#period"); seg.innerHTML = "";
@@ -26,19 +30,28 @@ function areaChart(data) {
   else { pts = data.map((d,i)=>[i/(data.length-1)*W, y(d.cost)]); }
   const line = "M" + pts.map(p=>`${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" L");
   const area = line + ` L${W},${H} L0,${H} Z`;
+  // прозрачные точки-цели для tooltip по каждому дню
+  const xAt = (i) => data.length < 2 ? W/2 : i/(data.length-1)*W;
+  const hits = data.map((d,i)=>{
+    const cx=xAt(i), cy=y(d.cost);
+    const tip = `${fmtDate(d.date)}<br><b>${fmtUSD(d.cost)}</b>`;
+    return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="9" fill="transparent" pointer-events="all" data-tip="${tip}"/>`;
+  }).join("");
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none" style="display:block">
     <defs><linearGradient id="ar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fb923c" stop-opacity=".38"/><stop offset="1" stop-color="#fb923c" stop-opacity="0"/></linearGradient></defs>
     <path d="${area}" fill="url(#ar)"/>
     <path d="${line}" fill="none" stroke="#fb923c" stroke-width="2.5" stroke-linecap="round" style="filter:drop-shadow(0 0 6px rgba(251,146,60,.55))"/>
+    ${hits}
   </svg>`;
 }
 
-function bars(items, label, val, max) {
+function bars(items, label, val, max, tip) {
   return items.map(it => {
     const v = val(it);
     const w = Math.max(2, (v/max)*100);
     const cls = v > 0 ? "bar-fill" : "bar-fill dim";
-    return `<div class="bar-row"><span class="bar-name">${esc(label(it))}</span><span class="bar-track"><span class="${cls}" style="width:${w}%"></span></span><span class="bar-val">${v>0?fmtUSD(v):"~est"}</span></div>`;
+    const dt = tip ? ` data-tip="${escAttr(tip(it))}"` : "";
+    return `<div class="bar-row"${dt}><span class="bar-name">${esc(label(it))}</span><span class="bar-track"><span class="${cls}" style="width:${w}%"></span></span><span class="bar-val">${v>0?fmtUSD(v):"~est"}</span></div>`;
   }).join("");
 }
 
@@ -49,7 +62,9 @@ function scatter(points) {
     const cx=20+(p.durationMin/maxD)*(W-40), cy=H-20-(p.cost/maxC)*(H-40);
     const r=p.outlier?9:4, fill=p.outlier?"rgba(251,146,60,.85)":"rgba(255,255,255,.28)";
     const glow=p.outlier?'style="filter:drop-shadow(0 0 8px rgba(251,146,60,.7))"':"";
-    return `<circle cx="${cx.toFixed(0)}" cy="${cy.toFixed(0)}" r="${r}" fill="${fill}" ${glow}/>`;
+    const proj = p.project && p.project !== "(нет)" ? esc(p.project.split("/").pop()) : "сессия";
+    const tip = `<b>${proj}</b><br>${Math.round(p.durationMin)} мин · ${p.iterations} итер<br>${fmtUSD(p.cost)} · ${fmtTok(p.tokens)} ток`;
+    return `<circle cx="${cx.toFixed(0)}" cy="${cy.toFixed(0)}" r="${r}" fill="${fill}" ${glow} data-tip="${escAttr(tip)}"/>`;
   }).join("");
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" style="display:block">
     <line x1="0" y1="${H-20}" x2="${W}" y2="${H-20}" stroke="rgba(255,255,255,.08)"/>
@@ -79,13 +94,13 @@ function render(s) {
   const maxModel = Math.max(...(s.byModel||[]).map(m=>m.cost),1);
   app.appendChild(el(`<div class="grid2">
     <div class="shell"><div class="core"><div class="ctitle"><h3>Стоимость во времени</h3><span class="meta">USD / день</span></div>${areaChart(s.costOverTime||[])}</div></div>
-    <div class="shell"><div class="core"><div class="ctitle"><h3>По моделям</h3><span class="meta">доля $</span></div>${bars(s.byModel||[], m=>m.model, m=>m.cost, maxModel)}</div></div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>По моделям</h3><span class="meta">доля $</span></div>${bars(s.byModel||[], m=>m.model, m=>m.cost, maxModel, m=>`${esc(m.model)}<br><b>${m.cost>0?fmtUSD(m.cost):"оценка ~est"}</b> · ${m.events} событий`)}</div></div>
   </div>`));
   // by tool + top projects + activity
   const maxTool = Math.max(...(s.byTool||[]).map(t=>t.cost),1);
   const proj = (s.topProjects||[]).map(p=>`<div class="proj"><div><div>${esc(p.project)}</div><div class="p-meta">${p.sessions} сессий</div></div><span style="font-family:var(--mono);font-variant-numeric:tabular-nums">${fmtUSD(p.cost)}</span></div>`).join("");
   app.appendChild(el(`<div class="grid3">
-    <div class="shell"><div class="core"><div class="ctitle"><h3>По инструментам</h3></div>${bars(s.byTool||[], t=>t.tool, t=>t.cost, maxTool)}<div style="margin-top:12px;font-size:11px;color:var(--dim);font-family:var(--mono)">cursor — только активность</div></div></div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>По инструментам</h3></div>${bars(s.byTool||[], t=>t.tool, t=>t.cost, maxTool, t=>`${esc(t.tool)}<br><b>${t.cost>0?fmtUSD(t.cost):"оценка ~est"}</b> · ${fmtTok(t.tokens)} ток · ${t.events} соб`)}<div style="margin-top:12px;font-size:11px;color:var(--dim);font-family:var(--mono)">cursor — только активность</div></div></div>
     <div class="shell"><div class="core"><div class="ctitle"><h3>Топ проектов</h3><span class="meta">$ / задача</span></div>${proj||'<div class="subtitle">нет данных</div>'}</div></div>
     <div class="shell"><div class="core"><div class="ctitle"><h3>Активность</h3><span class="meta">сессий/день</span></div><div style="font-size:30px;font-weight:600;font-variant-numeric:tabular-nums">${k.sessions}</div><div class="ksub">сессий за период</div></div></div>
   </div>`));
@@ -104,6 +119,22 @@ function render(s) {
     </div></div>
   </div>`));
 }
+
+// плавающий tooltip: следует за курсором над любым элементом с атрибутом data-tip
+const tip = el('<div class="tooltip"></div>');
+document.body.appendChild(tip);
+document.addEventListener("mousemove", (e) => {
+  const target = e.target.closest ? e.target.closest("[data-tip]") : null;
+  if (!target) { tip.style.opacity = "0"; return; }
+  tip.innerHTML = target.getAttribute("data-tip");
+  tip.style.opacity = "1";
+  const r = tip.getBoundingClientRect();
+  let x = e.clientX + 14, y = e.clientY + 14;
+  if (x + r.width > window.innerWidth - 8) x = e.clientX - r.width - 14;
+  if (y + r.height > window.innerHeight - 8) y = e.clientY - r.height - 14;
+  tip.style.left = Math.max(8, x) + "px";
+  tip.style.top = Math.max(8, y) + "px";
+});
 
 async function load() {
   try {
