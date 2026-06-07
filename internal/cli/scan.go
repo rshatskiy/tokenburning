@@ -9,11 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rshatskiy/tokenburning/internal/adapter"
-	"github.com/rshatskiy/tokenburning/internal/adapter/claudecode"
-	"github.com/rshatskiy/tokenburning/internal/adapter/codex"
-	"github.com/rshatskiy/tokenburning/internal/adapter/cursor"
-	"github.com/rshatskiy/tokenburning/internal/model"
+	"github.com/rshatskiy/tokenburning/internal/collect"
 	"github.com/rshatskiy/tokenburning/internal/platform"
 	"github.com/rshatskiy/tokenburning/internal/pricing"
 	"github.com/rshatskiy/tokenburning/internal/store"
@@ -58,40 +54,15 @@ func runScan(dbPath string) (string, error) {
 	}
 	defer db.Close()
 
-	adapters := []adapter.Adapter{
-		claudecode.New(),
-		codex.New(),
-		cursor.New(),
-	}
-
 	// TODO slice-2: стримить инжест чанками, если корпус вырастет за ~100k событий (сейчас весь batch в памяти).
-	var batch []model.Event
-	var quarantined int
-	emit := func(e model.Event) {
-		e.Cost = cat.Cost(e.Model, e.Tokens)
-		batch = append(batch, e)
-	}
-	quar := func(raw []byte, err error) { quarantined++ }
-
-	for _, ad := range adapters {
-		sources, derr := ad.Discover(paths)
-		if derr != nil {
-			fmt.Fprintf(os.Stderr, "discover %s: %v\n", ad.Name(), derr)
-			continue
-		}
-		for i, src := range sources {
-			// TODO slice-2: подавлять прогресс при не-TTY stderr (isatty), сейчас \r может засорять перенаправленный вывод.
-			fmt.Fprintf(os.Stderr, "\r%s %d/%d…", ad.Name(), i+1, len(sources))
-			if _, cerr := ad.Collect(src, adapter.Cursor{}, emit, quar); cerr != nil {
-				fmt.Fprintf(os.Stderr, "\nпропуск %s: %v\n", src.Path, cerr)
-			}
-		}
-		fmt.Fprintln(os.Stderr)
-	}
-
-	if err := db.Insert(batch); err != nil {
+	res, err := collect.Run(db, cat, paths, func(tool string, i, n int) {
+		fmt.Fprintf(os.Stderr, "\r%s %d/%d…", tool, i, n)
+	})
+	if err != nil {
 		return "", err
 	}
+	fmt.Fprintln(os.Stderr)
+	quarantined := res.Quarantined
 
 	var b strings.Builder
 	tools, err := db.SummaryByTool(time.Time{})

@@ -14,6 +14,9 @@ func NewRootCmd() *cobra.Command {
 	root.AddCommand(newDashboardCmd())
 	root.AddCommand(newVersionCmd())
 	root.AddCommand(newPushCmd())
+	root.AddCommand(newDaemonCmd())
+	root.AddCommand(newEnableCmd())
+	root.AddCommand(newDisableCmd())
 	return root
 }
 

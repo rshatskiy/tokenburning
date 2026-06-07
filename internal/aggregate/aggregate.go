@@ -1,6 +1,10 @@
 package aggregate
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -93,6 +97,24 @@ func normalizeModel(m string) string {
 		}
 	}
 	return "other"
+}
+
+// Push отправляет payload на endpoint (POST endpoint+"/v1/aggregates"). Только производное.
+func Push(p Payload, endpoint string) error {
+	data, err := json.Marshal(p)
+	if err != nil {
+		return err
+	}
+	c := &http.Client{Timeout: 30 * time.Second}
+	resp, err := c.Post(endpoint+"/v1/aggregates", "application/json", bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("push: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("push: сервер ответил %s", resp.Status)
+	}
+	return nil
 }
 
 // Build собирает payload по выбранным категориям. project_key и точные ts не включаются.

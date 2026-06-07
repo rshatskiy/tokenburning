@@ -24,6 +24,29 @@ tokenburning dashboard   # открыть локальный web-дашборд
 tokenburning version
 ```
 
+## Фоновый сбор (опционально)
+
+По умолчанию `tokenburning` ничего не делает в фоне. Включить периодический сбор (демон с автозапуском при логине):
+
+```sh
+tokenburning enable                 # локальный фоновый сбор, интервал 15 мин
+tokenburning enable --interval-min 30
+tokenburning disable                # выключить
+```
+
+Отправка агрегатов наверх — строго по согласию и только производных данных (без сырого, без проектов):
+
+```sh
+tokenburning push --breadth --dry-run          # посмотреть, что именно уйдёт
+tokenburning enable --to https://server --breadth   # включить фоновую отправку breadth
+```
+
+- **macOS:** LaunchAgent (`~/Library/LaunchAgents/com.tokenburning.daemon.plist`)
+- **Linux:** systemd user-unit (`~/.config/systemd/user/tokenburning.service`)
+- **Windows:** Scheduled Task при логине
+
+Всё без root. Лог демона: `~/.tokenburning/daemon.log` (macOS).
+
 ## Бинарь не подписан (пока)
 
 Релизные бинари ещё не подписаны (notarization/Authenticode — позже). Если ОС предупреждает:
