@@ -1,0 +1,10 @@
+# Go
+/lens
+*.exe
+*.test
+*.out
+/dist/
+# Local lens data
+/.lens/
+# OS
+.DS_Store
