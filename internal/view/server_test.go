@@ -48,3 +48,12 @@ func TestRejectsForeignHost(t *testing.T) {
 		t.Fatalf("чужой Host код %d, want 403 (анти-rebinding)", rr.Code)
 	}
 }
+
+func TestAssetsEmbedded(t *testing.T) {
+	for _, name := range []string{"assets/index.html", "assets/app.js", "assets/style.css", "assets/favicon.svg"} {
+		b, err := assetsFS.ReadFile(name)
+		if err != nil || len(b) == 0 {
+			t.Fatalf("ассет %s пуст или отсутствует: %v", name, err)
+		}
+	}
+}
