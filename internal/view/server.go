@@ -3,8 +3,8 @@ package view
 import (
 	"encoding/json"
 	"io/fs"
+	"net"
 	"net/http"
-	"strings"
 
 	"github.com/rshatskiy/tokenburning/internal/store"
 )
@@ -36,11 +36,10 @@ func (s *Server) Handler() http.Handler {
 
 // hostAllowed разрешает только loopback-хосты (с любым портом).
 func hostAllowed(host string) bool {
-	h := host
-	if i := strings.LastIndex(h, ":"); i >= 0 {
-		h = h[:i]
+	h, _, err := net.SplitHostPort(host)
+	if err != nil {
+		h = host // нет порта — берём строку целиком как хост
 	}
-	h = strings.Trim(h, "[]") // ipv6
 	return h == "127.0.0.1" || h == "localhost" || h == "::1"
 }
 

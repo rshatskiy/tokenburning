@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -90,7 +91,7 @@ func runScan(dbPath string) (string, error) {
 	}
 
 	var b strings.Builder
-	tools, err := db.SummaryByTool()
+	tools, err := db.SummaryByTool(time.Time{})
 	if err != nil {
 		return "", err
 	}
@@ -99,7 +100,7 @@ func runScan(dbPath string) (string, error) {
 		fmt.Fprintf(&b, "%-14s %8d %14d %12.1f\n", tsum.Tool, tsum.Events, tsum.Tokens, tsum.CostAmount)
 	}
 
-	rows, err := db.SummaryByModel()
+	rows, err := db.SummaryByModel(time.Time{})
 	if err != nil {
 		return "", err
 	}

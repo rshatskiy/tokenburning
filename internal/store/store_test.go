@@ -29,7 +29,7 @@ func TestInsertIsIdempotent(t *testing.T) {
 			t.Fatalf("Insert: %v", err)
 		}
 	}
-	rows, err := db.SummaryByModel()
+	rows, err := db.SummaryByModel(time.Time{})
 	if err != nil {
 		t.Fatalf("SummaryByModel: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestInsertIsIdempotent(t *testing.T) {
 	if err := db.Insert([]model.Event{sampleEvent("req_B")}); err != nil {
 		t.Fatalf("Insert req_B: %v", err)
 	}
-	rows, err = db.SummaryByModel()
+	rows, err = db.SummaryByModel(time.Time{})
 	if err != nil {
 		t.Fatalf("SummaryByModel: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestSummaryByTool(t *testing.T) {
 	if err := db.Insert([]model.Event{e1, e2}); err != nil {
 		t.Fatalf("Insert: %v", err)
 	}
-	rows, err := db.SummaryByTool()
+	rows, err := db.SummaryByTool(time.Time{})
 	if err != nil {
 		t.Fatalf("SummaryByTool: %v", err)
 	}

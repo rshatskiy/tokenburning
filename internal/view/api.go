@@ -49,10 +49,10 @@ func BuildSummary(db *store.DB, period string) (Summary, error) {
 	if s.CostOverTime, err = db.CostOverTime(since); err != nil {
 		return s, err
 	}
-	if s.ByTool, err = db.SummaryByTool(); err != nil {
+	if s.ByTool, err = db.SummaryByTool(since); err != nil {
 		return s, err
 	}
-	if s.ByModel, err = db.SummaryByModel(); err != nil {
+	if s.ByModel, err = db.SummaryByModel(since); err != nil {
 		return s, err
 	}
 	if s.TopProjects, err = db.SummaryByProject(since); err != nil {
