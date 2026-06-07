@@ -197,15 +197,21 @@ func (d *DB) SessionStats(since time.Time) (SessionStatsResult, error) {
 	res.MedianTokens, res.P90Tokens = percentile(tokAll, 50), percentile(tokAll, 90)
 	res.MedianCost, res.P90Cost = percentile(costAll, 50), percentile(costAll, 90)
 
+	// Порог должен быть положительным, иначе при нулевых данных (Codex/Cursor: $0,
+	// одно-событийные сессии) 0>=0 пометит выбросами все сессии.
+	hasDur := len(durMulti) > 0
 	for i := range points {
-		points[i].Outlier = points[i].Cost >= res.P90Cost || points[i].DurationMin >= res.P90DurationMin
+		costOut := res.P90Cost > 0 && points[i].Cost >= res.P90Cost
+		durOut := hasDur && res.P90DurationMin > 0 && points[i].DurationMin >= res.P90DurationMin
+		points[i].Outlier = costOut || durOut
 	}
 	res.Scatter = points
 
 	// flagged: длинные И дорогие, по убыванию стоимости, до 3
 	var flagged []SessionPoint
 	for _, p := range points {
-		if p.DurationMin >= res.MedianDurationMin && p.Cost >= res.MedianCost && p.Iterations >= 2 {
+		if p.Iterations >= 2 && p.Cost > 0 && p.DurationMin > 0 &&
+			p.DurationMin >= res.MedianDurationMin && p.Cost >= res.MedianCost {
 			flagged = append(flagged, p)
 		}
 	}

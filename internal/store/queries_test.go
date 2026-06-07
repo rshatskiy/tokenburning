@@ -64,8 +64,11 @@ func TestSummaryByProjectAndActivity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SummaryByProject: %v", err)
 	}
-	if len(pr) != 2 || pr[0].Project != "/p1" { // /p1 дороже: 15 vs 20? нет, /p2=20 -> сортировка по cost desc
-		// /p2 cost 20 > /p1 cost 15 → первый /p2
+	if len(pr) != 2 {
+		t.Fatalf("want 2 projects, got %d", len(pr))
+	}
+	if pr[0].Project != "/p2" {
+		t.Fatalf("первый проект должен быть /p2 (cost 20 > 15), got %s", pr[0].Project)
 	}
 	var p1 *ProjectSummary
 	for i := range pr {
@@ -119,6 +122,26 @@ func TestSessionStats(t *testing.T) {
 	// самая дорогая сессия s1 должна быть среди flagged
 	if len(s.Flagged) == 0 || s.Flagged[0].Cost != 30 {
 		t.Fatalf("flagged[0] должна быть s1 ($30): %+v", s.Flagged)
+	}
+	outliers := 0
+	for _, p := range s.Scatter {
+		if p.Outlier {
+			outliers++
+		}
+	}
+	if outliers != 1 {
+		t.Fatalf("ожидался 1 выброс (дорогая длинная сессия s1), получено %d", outliers)
+	}
+}
+
+func TestSessionStatsEmpty(t *testing.T) {
+	db := openTmp(t)
+	s, err := db.SessionStats(time.Unix(0, 0))
+	if err != nil {
+		t.Fatalf("SessionStats: %v", err)
+	}
+	if len(s.Scatter) != 0 || len(s.Flagged) != 0 {
+		t.Fatalf("пустая БД не должна давать сессий: %+v", s)
 	}
 }
 
