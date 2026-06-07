@@ -61,6 +61,7 @@ func runScan(dbPath string) (string, error) {
 		return "", err
 	}
 
+	// TODO slice-2: стримить инжест чанками, если корпус вырастет за ~100k событий (сейчас весь batch в памяти).
 	var batch []model.Event
 	var quarantined int
 	emit := func(e model.Event) {
@@ -70,6 +71,7 @@ func runScan(dbPath string) (string, error) {
 	quar := func(raw []byte, err error) { quarantined++ }
 
 	for i, src := range sources {
+		// TODO slice-2: подавлять прогресс при не-TTY stderr (isatty), сейчас \r может засорять перенаправленный вывод.
 		fmt.Fprintf(os.Stderr, "\rскан %d/%d…", i+1, len(sources)) // прогресс первого прохода (§8.4)
 		if _, err := ad.Collect(src, adapter.Cursor{}, emit, quar); err != nil {
 			fmt.Fprintf(os.Stderr, "\nпропуск %s: %v\n", src.Path, err)
