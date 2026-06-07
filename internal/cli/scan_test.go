@@ -29,6 +29,28 @@ func TestRunScanProducesSummary(t *testing.T) {
 	}
 }
 
+func TestRunScanPrintsPerToolSection(t *testing.T) {
+	home := t.TempDir()
+	projDir := filepath.Join(home, ".claude", "projects", "-proj")
+	if err := os.MkdirAll(projDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	line := `{"type":"assistant","requestId":"req_T","sessionId":"s","cwd":"/p","timestamp":"2026-06-07T10:00:00.000Z","message":{"id":"m","model":"claude-opus-4-7","usage":{"input_tokens":1000000,"output_tokens":0}}}` + "\n"
+	if err := os.WriteFile(filepath.Join(projDir, "a.jsonl"), []byte(line), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(home, ".claude"))
+	t.Setenv("CODEX_HOME", filepath.Join(home, "no-codex"))
+	dbPath := filepath.Join(t.TempDir(), "lens.db")
+	out, err := runScan(dbPath)
+	if err != nil {
+		t.Fatalf("runScan: %v", err)
+	}
+	if !strings.Contains(out, "TOOL") || !strings.Contains(out, "claude_code") {
+		t.Fatalf("нет секции TOOL/claude_code:\n%s", out)
+	}
+}
+
 func TestRescanAfterRewriteNoDuplicateCounts(t *testing.T) {
 	home := t.TempDir()
 	projDir := filepath.Join(home, ".claude", "projects", "-proj")

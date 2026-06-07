@@ -55,3 +55,34 @@ func TestInsertIsIdempotent(t *testing.T) {
 		t.Fatalf("Events = %d, ожидалось 2 после добавления другого event_id", rows[0].Events)
 	}
 }
+
+func TestSummaryByTool(t *testing.T) {
+	db, err := Open(filepath.Join(t.TempDir(), "lens.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer db.Close()
+	e1 := sampleEvent("a")
+	e2 := sampleEvent("b")
+	e2.Tool = model.ToolCodex
+	e2.Tokens = model.Tokens{Input: 100, Output: 50}
+	if err := db.Insert([]model.Event{e1, e2}); err != nil {
+		t.Fatalf("Insert: %v", err)
+	}
+	rows, err := db.SummaryByTool()
+	if err != nil {
+		t.Fatalf("SummaryByTool: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("строк %d, ожидалось 2", len(rows))
+	}
+	var codex *ToolSummary
+	for i := range rows {
+		if rows[i].Tool == string(model.ToolCodex) {
+			codex = &rows[i]
+		}
+	}
+	if codex == nil || codex.Events != 1 || codex.Tokens != 150 {
+		t.Fatalf("codex summary неверна: %+v", codex)
+	}
+}

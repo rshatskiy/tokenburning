@@ -50,3 +50,24 @@ func TestDetectHonorsClaudeConfigDir(t *testing.T) {
 		t.Fatalf("ClaudeCodeProjects = %q, want /custom/projects", paths.ClaudeCodeProjects)
 	}
 }
+
+func TestDetectCodexHomeOverride(t *testing.T) {
+	t.Setenv("CODEX_HOME", "/custom-codex")
+	p, err := Detect()
+	if err != nil {
+		t.Fatalf("Detect: %v", err)
+	}
+	if p.CodexSessions != "/custom-codex/sessions" {
+		t.Fatalf("CodexSessions = %q, want /custom-codex/sessions", p.CodexSessions)
+	}
+}
+
+func TestDetectCursorStorageNonEmpty(t *testing.T) {
+	p, err := Detect()
+	if err != nil {
+		t.Fatalf("Detect: %v", err)
+	}
+	if p.CursorStorage == "" {
+		t.Fatal("CursorStorage пуст — не определён путь Cursor для этой ОС")
+	}
+}

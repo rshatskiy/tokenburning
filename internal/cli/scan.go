@@ -55,10 +55,9 @@ func runScan(dbPath string) (string, error) {
 	}
 	defer db.Close()
 
-	ad := claudecode.New()
-	sources, err := ad.Discover(paths)
-	if err != nil {
-		return "", err
+	adapters := []adapter.Adapter{
+		claudecode.New(),
+		// codex и cursor добавляются в Task 4 и Task 5
 	}
 
 	// TODO slice-2: стримить инжест чанками, если корпус вырастет за ~100k событий (сейчас весь batch в памяти).
@@ -70,26 +69,43 @@ func runScan(dbPath string) (string, error) {
 	}
 	quar := func(raw []byte, err error) { quarantined++ }
 
-	for i, src := range sources {
-		// TODO slice-2: подавлять прогресс при не-TTY stderr (isatty), сейчас \r может засорять перенаправленный вывод.
-		fmt.Fprintf(os.Stderr, "\rскан %d/%d…", i+1, len(sources)) // прогресс первого прохода (§8.4)
-		if _, err := ad.Collect(src, adapter.Cursor{}, emit, quar); err != nil {
-			fmt.Fprintf(os.Stderr, "\nпропуск %s: %v\n", src.Path, err)
+	for _, ad := range adapters {
+		sources, derr := ad.Discover(paths)
+		if derr != nil {
+			fmt.Fprintf(os.Stderr, "discover %s: %v\n", ad.Name(), derr)
+			continue
 		}
+		for i, src := range sources {
+			// TODO slice-2: подавлять прогресс при не-TTY stderr (isatty), сейчас \r может засорять перенаправленный вывод.
+			fmt.Fprintf(os.Stderr, "\r%s %d/%d…", ad.Name(), i+1, len(sources))
+			if _, cerr := ad.Collect(src, adapter.Cursor{}, emit, quar); cerr != nil {
+				fmt.Fprintf(os.Stderr, "\nпропуск %s: %v\n", src.Path, cerr)
+			}
+		}
+		fmt.Fprintln(os.Stderr)
 	}
-	fmt.Fprintln(os.Stderr)
+
 	if err := db.Insert(batch); err != nil {
 		return "", err
+	}
+
+	var b strings.Builder
+	tools, err := db.SummaryByTool()
+	if err != nil {
+		return "", err
+	}
+	fmt.Fprintf(&b, "%-14s %8s %14s %12s\n", "TOOL", "EVENTS", "TOKENS", "COST(USD)")
+	for _, tsum := range tools {
+		fmt.Fprintf(&b, "%-14s %8d %14d %12.1f\n", tsum.Tool, tsum.Events, tsum.Tokens, tsum.CostAmount)
 	}
 
 	rows, err := db.SummaryByModel()
 	if err != nil {
 		return "", err
 	}
-	var b strings.Builder
-	fmt.Fprintf(&b, "%-22s %8s %12s\n", "MODEL", "EVENTS", "COST(USD)")
+	fmt.Fprintf(&b, "\n%-26s %8s %12s\n", "MODEL", "EVENTS", "COST(USD)")
 	for _, r := range rows {
-		fmt.Fprintf(&b, "%-22s %8d %12.1f\n", r.Model, r.Events, r.CostAmount)
+		fmt.Fprintf(&b, "%-26s %8d %12.1f\n", r.Model, r.Events, r.CostAmount)
 	}
 	if quarantined > 0 {
 		fmt.Fprintf(&b, "\nв карантине записей: %d\n", quarantined)
