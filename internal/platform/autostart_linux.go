@@ -23,7 +23,8 @@ Description=tokenburning background collector
 
 [Service]
 ExecStart=` + exe + ` daemon
-Restart=on-failure
+Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=default.target

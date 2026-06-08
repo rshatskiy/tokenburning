@@ -18,6 +18,7 @@ func NewRootCmd() *cobra.Command {
 	root.AddCommand(newEnableCmd())
 	root.AddCommand(newDisableCmd())
 	root.AddCommand(newConnectCmd())
+	root.AddCommand(newUpdateCmd())
 	return root
 }
 

@@ -50,6 +50,7 @@ Or grab a binary for your OS/arch from [Releases](https://github.com/rshatskiy/t
 ```sh
 tokenburning scan        # parse local logs, print cost by tool/model
 tokenburning dashboard   # open the local web dashboard (127.0.0.1, token-gated)
+tokenburning update      # self-update to the latest release (SHA-256 verified)
 tokenburning version
 ```
 

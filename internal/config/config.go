@@ -11,6 +11,7 @@ import (
 type Config struct {
 	IntervalMinutes int     `json:"intervalMinutes"`
 	Push            PushCfg `json:"push"`
+	AutoUpdate      bool    `json:"autoUpdate"`
 }
 
 type PushCfg struct {

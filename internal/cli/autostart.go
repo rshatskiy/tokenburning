@@ -12,7 +12,7 @@ import (
 func newEnableCmd() *cobra.Command {
 	var intervalMin int
 	var to, token string
-	var breadth, depth bool
+	var breadth, depth, autoUpdate bool
 	cmd := &cobra.Command{
 		Use:   "enable",
 		Short: "Включить фоновый сбор (автозапуск демона)",
@@ -23,6 +23,9 @@ func newEnableCmd() *cobra.Command {
 			}
 			if intervalMin > 0 {
 				cfg.IntervalMinutes = intervalMin
+			}
+			if cmd.Flags().Changed("auto-update") {
+				cfg.AutoUpdate = autoUpdate
 			}
 			// настроить push по согласию, если заданы endpoint и категории
 			var cats []string
@@ -52,6 +55,9 @@ func newEnableCmd() *cobra.Command {
 			} else {
 				cmd.Println("push наверх не настроен (только локальный сбор). Чтобы включить: --to <url> --breadth/--depth")
 			}
+			if cfg.AutoUpdate {
+				cmd.Println("авто-апдейт: включён (демон обновляется сам раз в сутки)")
+			}
 			return nil
 		},
 	}
@@ -60,6 +66,7 @@ func newEnableCmd() *cobra.Command {
 	cmd.Flags().StringVar(&token, "token", "", "токен коллектора для отправки")
 	cmd.Flags().BoolVar(&breadth, "breadth", false, "слать breadth-агрегаты (с --to)")
 	cmd.Flags().BoolVar(&depth, "depth", false, "слать depth-сигналы (с --to)")
+	cmd.Flags().BoolVar(&autoUpdate, "auto-update", false, "фоновое самообновление демона (раз в сутки)")
 	return cmd
 }
 

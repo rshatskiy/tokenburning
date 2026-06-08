@@ -50,6 +50,7 @@ irm https://raw.githubusercontent.com/rshatskiy/tokenburning/main/install.ps1 | 
 ```sh
 tokenburning scan        # разобрать локальные логи, показать стоимость по инструментам/моделям
 tokenburning dashboard   # открыть локальный web-дашборд (127.0.0.1, под токеном)
+tokenburning update      # самообновление до последней версии (с проверкой SHA-256)
 tokenburning version
 ```
 
