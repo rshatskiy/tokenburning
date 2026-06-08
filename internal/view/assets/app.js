@@ -1,3 +1,52 @@
+const I18N = {
+  en: {
+    all: "all", nodata: "no data", none: "(none)", session: "session",
+    cost: "Cost", cacheRead: "% cache read", tokens: "Tokens", activeDays: "Active days",
+    sessionsSuffix: " sessions", tools: "Tools",
+    costOverTime: "Cost over time", usdPerDay: "USD / day",
+    byModel: "By model", shareUsd: "$ share", events: "events",
+    byTool: "By tool", tokShort: "tok", evShort: "ev", cursorActivityOnly: "cursor — activity only",
+    cursorNote: "Cursor: tokens/cost are behind the server API — unavailable locally",
+    topProjects: "Top projects", perTask: "$ / task",
+    activity: "Activity", sessionsPerDay: "sessions/day", sessionsInPeriod: "sessions in period",
+    sessionAnalytics: "session analytics", signalNotExact: "signal, not exact", selfCoaching: "self-coaching",
+    noSessionData: "no session data",
+    perSessionUsdUp: "$ per session ↑", durationRight: "duration →",
+    normalSessions: "normal sessions", longExpensiveFriction: "long & expensive — friction",
+    sessDurCost: "Sessions: duration × cost", orangeCandidates: "orange — friction candidates",
+    perSessionMedian: "Per session (median)", min: "min", activeDuration: "active duration",
+    modelCalls: "model calls", needsAttention: "Needs attention", noClearOutliers: "no clear outliers",
+    stuck: "stuck?", iter: "iter", iterations: "iterations", loadError: "Load error",
+    tokensLabel: "tokens", costLabel: "cost",
+  },
+  ru: {
+    all: "всё", nodata: "нет данных", none: "(нет)", session: "сессия",
+    cost: "Стоимость", cacheRead: "% кэш-чтения", tokens: "Токены", activeDays: "Активных дней",
+    sessionsSuffix: " сессий", tools: "Инструменты",
+    costOverTime: "Стоимость во времени", usdPerDay: "USD / день",
+    byModel: "По моделям", shareUsd: "доля $", events: "событий",
+    byTool: "По инструментам", tokShort: "ток", evShort: "соб", cursorActivityOnly: "cursor — только активность",
+    cursorNote: "Cursor: токены/стоимость за серверным API — локально недоступны",
+    topProjects: "Топ проектов", perTask: "$ / задача",
+    activity: "Активность", sessionsPerDay: "сессий/день", sessionsInPeriod: "сессий за период",
+    sessionAnalytics: "аналитика сессий", signalNotExact: "сигнал, не точно", selfCoaching: "самокоучинг",
+    noSessionData: "нет данных по сессиям",
+    perSessionUsdUp: "$ за сессию ↑", durationRight: "длительность →",
+    normalSessions: "обычные сессии", longExpensiveFriction: "долго и дорого — трение",
+    sessDurCost: "Сессии: длительность × стоимость", orangeCandidates: "оранжевым — кандидаты на трение",
+    perSessionMedian: "На сессию (медиана)", min: "мин", activeDuration: "активная длительность",
+    modelCalls: "обращений к модели", needsAttention: "Требуют внимания", noClearOutliers: "нет выраженных выбросов",
+    stuck: "застревание?", iter: "итер", iterations: "итераций", loadError: "Ошибка загрузки",
+    tokensLabel: "токенов", costLabel: "стоимость",
+  },
+};
+let lang = localStorage.getItem("tb_lang");
+if (lang !== "en" && lang !== "ru") {
+  lang = (navigator.language || "en").toLowerCase().startsWith("ru") ? "ru" : "en";
+}
+const t = (k) => (I18N[lang] && I18N[lang][k] != null) ? I18N[lang][k] : (I18N.en[k] != null ? I18N.en[k] : k);
+const locale = () => (lang === "ru" ? "ru-RU" : "en-US");
+
 const token = new URLSearchParams(location.search).get("t") || "";
 let period = "30d";
 let lastSummary = null;
@@ -6,25 +55,40 @@ let sessTool = null;
 const $ = (sel) => document.querySelector(sel);
 const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; };
 const esc = (s) => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-const fmtUSD = (n) => "$" + Math.round(n).toLocaleString("ru-RU");
-const fmtTok = (n) => n >= 1e9 ? (n/1e9).toFixed(1)+"B" : n >= 1e6 ? (n/1e6).toFixed(0)+"M" : n.toLocaleString("ru-RU");
+const fmtUSD = (n) => "$" + Math.round(n).toLocaleString(locale());
+const fmtTok = (n) => n >= 1e9 ? (n/1e9).toFixed(1)+"B" : n >= 1e6 ? (n/1e6).toFixed(0)+"M" : n.toLocaleString(locale());
 const fmtDate = (s) => { const p = String(s).split("-"); return p.length === 3 ? p[2]+"."+p[1] : s; };
-// tip-строка уже html-безопасна (имена через esc, теги <br>/<b> литеральные);
-// для атрибута data-tip остаётся экранировать только кавычки
+// tip-string is already html-safe (names via esc, tags <br>/<b> are literal);
+// for data-tip attribute only quotes need escaping
 const escAttr = (s) => String(s).replace(/"/g, "&quot;");
+
+function renderLang() {
+  const seg = $("#lang"); if (!seg) return; seg.innerHTML = "";
+  for (const l of ["EN","RU"]) {
+    const code = l.toLowerCase();
+    const s = el(`<span${code===lang?' class="on"':''}>${l}</span>`);
+    s.onclick = () => { lang = code; localStorage.setItem("tb_lang", code); rerender(); };
+    seg.appendChild(s);
+  }
+}
+
+function rerender() {
+  renderLang(); renderPeriod();
+  if (lastSummary) render(lastSummary);
+}
 
 function renderPeriod() {
   const seg = $("#period"); seg.innerHTML = "";
   for (const p of ["7d","30d","90d","all"]) {
-    const s = el(`<span${p===period?' class="on"':''}>${p==="all"?"всё":p}</span>`);
+    const s = el(`<span${p===period?' class="on"':''}>${p==="all"?t('all'):p}</span>`);
     s.onclick = () => { period = p; load(); };
     seg.appendChild(s);
   }
 }
 
-// area-chart по дням
+// area chart by day
 function areaChart(data) {
-  if (!data.length) return '<div class="subtitle">нет данных</div>';
+  if (!data.length) return `<div class="subtitle">${t('nodata')}</div>`;
   const W=640,H=200, max=Math.max(...data.map(d=>d.cost),1);
   const y=(c)=> H-10 - (c/max)*(H-30);
   let pts;
@@ -32,7 +96,7 @@ function areaChart(data) {
   else { pts = data.map((d,i)=>[i/(data.length-1)*W, y(d.cost)]); }
   const line = "M" + pts.map(p=>`${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" L");
   const area = line + ` L${W},${H} L0,${H} Z`;
-  // прозрачные точки-цели для tooltip по каждому дню
+  // transparent hit targets for tooltip per day
   const xAt = (i) => data.length < 2 ? W/2 : i/(data.length-1)*W;
   const hits = data.map((d,i)=>{
     const cx=xAt(i), cy=y(d.cost);
@@ -58,23 +122,23 @@ function bars(items, label, val, max, tip) {
 }
 
 function scatter(points) {
-  if (!points.length) return '<div class="subtitle">нет данных</div>';
+  if (!points.length) return `<div class="subtitle">${t('nodata')}</div>`;
   const W=640,H=210, maxD=Math.max(...points.map(p=>p.durationMin),1), maxC=Math.max(...points.map(p=>p.cost),1);
   const dots = points.map(p=>{
     const cx=20+(p.durationMin/maxD)*(W-40), cy=H-20-(p.cost/maxC)*(H-40);
     const r=p.outlier?9:4, fill=p.outlier?"rgba(251,146,60,.85)":"rgba(255,255,255,.28)";
     const glow=p.outlier?'style="filter:drop-shadow(0 0 8px rgba(251,146,60,.7))"':"";
-    const proj = p.project && p.project !== "(нет)" ? esc(p.project.split("/").pop()) : "сессия";
-    const tip = `<b>${proj}</b><br>${Math.round(p.durationMin)} мин · ${p.iterations} итер<br>${fmtUSD(p.cost)} · ${fmtTok(p.tokens)} ток`;
+    const proj = p.project && p.project !== t('none') ? esc(p.project.split("/").pop()) : t('session');
+    const tip = `<b>${proj}</b><br>${Math.round(p.durationMin)} ${t('min')} · ${p.iterations} ${t('iter')}<br>${fmtUSD(p.cost)} · ${fmtTok(p.tokens)} ${t('tokShort')}`;
     return `<circle cx="${cx.toFixed(0)}" cy="${cy.toFixed(0)}" r="${r}" fill="${fill}" ${glow} data-tip="${escAttr(tip)}"/>`;
   }).join("");
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" style="display:block">
     <line x1="0" y1="${H-20}" x2="${W}" y2="${H-20}" stroke="rgba(255,255,255,.08)"/>
     <line x1="0" y1="0" x2="0" y2="${H-20}" stroke="rgba(255,255,255,.08)"/>
-    <text x="6" y="14" fill="#5f5b56" font-size="10" font-family="ui-monospace,monospace">$ за сессию ↑</text>
-    <text x="${W-150}" y="${H-6}" fill="#5f5b56" font-size="10" font-family="ui-monospace,monospace">длительность →</text>
+    <text x="6" y="14" fill="#5f5b56" font-size="10" font-family="ui-monospace,monospace">${t('perSessionUsdUp')}</text>
+    <text x="${W-150}" y="${H-6}" fill="#5f5b56" font-size="10" font-family="ui-monospace,monospace">${t('durationRight')}</text>
     ${dots}</svg>
-    <div class="legend"><span><i style="background:rgba(255,255,255,.28)"></i>обычные сессии</span><span><i style="background:#fb923c"></i>долго и дорого — трение</span></div>`;
+    <div class="legend"><span><i style="background:rgba(255,255,255,.28)"></i>${t('normalSessions')}</span><span><i style="background:#fb923c"></i>${t('longExpensiveFriction')}</span></div>`;
 }
 
 function kpiCard(label, num, sub, accent) {
@@ -83,29 +147,30 @@ function kpiCard(label, num, sub, accent) {
 
 function render(s) {
   lastSummary = s;
+  renderLang();
   renderPeriod();
   const app = $("#app"); app.innerHTML = "";
   const k = s.kpis;
   // KPI
   app.appendChild(el(`<div class="kpis">
-    ${kpiCard("Стоимость", fmtUSD(k.cost), (k.tokens?Math.round(k.cacheReadTokens/k.tokens*100):0)+"% кэш-чтения", true)}
-    ${kpiCard("Токены", fmtTok(k.tokens), "")}
-    ${kpiCard("Активных дней", k.activeDays+"", k.sessions+" сессий")}
-    ${kpiCard("Инструменты", (k.tools||[]).length+"", esc((k.tools||[]).join(" · ")))}
+    ${kpiCard(t('cost'), fmtUSD(k.cost), (k.tokens?Math.round(k.cacheReadTokens/k.tokens*100):0)+t('cacheRead'), true)}
+    ${kpiCard(t('tokens'), fmtTok(k.tokens), "")}
+    ${kpiCard(t('activeDays'), k.activeDays+"", k.sessions+t('sessionsSuffix'))}
+    ${kpiCard(t('tools'), (k.tools||[]).length+"", esc((k.tools||[]).join(" · ")))}
   </div>`));
   // cost over time + by model
   const maxModel = Math.max(...(s.byModel||[]).map(m=>m.cost),1);
   app.appendChild(el(`<div class="grid2">
-    <div class="shell"><div class="core"><div class="ctitle"><h3>Стоимость во времени</h3><span class="meta">USD / день</span></div>${areaChart(s.costOverTime||[])}</div></div>
-    <div class="shell"><div class="core"><div class="ctitle"><h3>По моделям</h3><span class="meta">доля $</span></div>${bars(s.byModel||[], m=>m.model, m=>m.cost, maxModel, m=>`${esc(m.model)}<br><b>${m.cost>0?fmtUSD(m.cost):"оценка ~est"}</b> · ${m.events} событий`)}</div></div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('costOverTime')}</h3><span class="meta">${t('usdPerDay')}</span></div>${areaChart(s.costOverTime||[])}</div></div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byModel')}</h3><span class="meta">${t('shareUsd')}</span></div>${bars(s.byModel||[], m=>m.model, m=>m.cost, maxModel, m=>`${esc(m.model)}<br><b>${m.cost>0?fmtUSD(m.cost):"~est"}</b> · ${m.events} ${t('events')}`)}</div></div>
   </div>`));
   // by tool + top projects + activity
   const maxTool = Math.max(...(s.byTool||[]).map(t=>t.cost),1);
-  const proj = (s.topProjects||[]).map(p=>`<div class="proj"><div><div>${esc(p.project)}</div><div class="p-meta">${p.sessions} сессий</div></div><span style="font-family:var(--mono);font-variant-numeric:tabular-nums">${fmtUSD(p.cost)}</span></div>`).join("");
+  const proj = (s.topProjects||[]).map(p=>`<div class="proj"><div><div>${esc(p.project)}</div><div class="p-meta">${p.sessions}${t('sessionsSuffix')}</div></div><span style="font-family:var(--mono);font-variant-numeric:tabular-nums">${fmtUSD(p.cost)}</span></div>`).join("");
   app.appendChild(el(`<div class="grid3">
-    <div class="shell"><div class="core"><div class="ctitle"><h3>По инструментам</h3></div>${bars(s.byTool||[], t=>t.tool, t=>t.cost, maxTool, t=>`${esc(t.tool)}<br><b>${t.cost>0?fmtUSD(t.cost):"оценка ~est"}</b> · ${fmtTok(t.tokens)} ток · ${t.events} соб`)}<div style="margin-top:12px;font-size:11px;color:var(--dim);font-family:var(--mono)">cursor — только активность</div></div></div>
-    <div class="shell"><div class="core"><div class="ctitle"><h3>Топ проектов</h3><span class="meta">$ / задача</span></div>${proj||'<div class="subtitle">нет данных</div>'}</div></div>
-    <div class="shell"><div class="core"><div class="ctitle"><h3>Активность</h3><span class="meta">сессий/день</span></div><div style="font-size:30px;font-weight:600;font-variant-numeric:tabular-nums">${k.sessions}</div><div class="ksub">сессий за период</div></div></div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byTool')}</h3></div>${bars(s.byTool||[], t=>t.tool, t=>t.cost, maxTool, t=>`${esc(t.tool)}<br><b>${t.cost>0?fmtUSD(t.cost):"~est"}</b> · ${fmtTok(t.tokens)} ${I18N[lang].tokShort} · ${t.events} ${I18N[lang].evShort}`)}<div style="margin-top:12px;font-size:11px;color:var(--dim);font-family:var(--mono)">${t('cursorActivityOnly')}</div></div></div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('topProjects')}</h3><span class="meta">${t('perTask')}</span></div>${proj||`<div class="subtitle">${t('nodata')}</div>`}</div></div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('activity')}</h3><span class="meta">${t('sessionsPerDay')}</span></div><div style="font-size:30px;font-weight:600;font-variant-numeric:tabular-nums">${k.sessions}</div><div class="ksub">${t('sessionsInPeriod')}</div></div></div>
   </div>`));
   // session analytics
   app.appendChild(el(`<div id="sess"></div>`));
@@ -115,12 +180,12 @@ function render(s) {
 function renderSessions(s) {
   const host = $("#sess");
   host.innerHTML = "";
-  host.appendChild(el(`<div class="eyebrow">аналитика сессий · <b style="color:var(--acc)">сигнал, не точно</b> · самокоучинг</div>`));
+  host.appendChild(el(`<div class="eyebrow">${t('sessionAnalytics')} · <b style="color:var(--acc)">${t('signalNotExact')}</b> · ${t('selfCoaching')}</div>`));
   const tools = s.sessionsByTool || [];
-  if (!tools.length) { host.appendChild(el('<div class="subtitle">нет данных по сессиям</div>')); return; }
+  if (!tools.length) { host.appendChild(el(`<div class="subtitle">${t('noSessionData')}</div>`)); return; }
   if (sessTool === null || !tools.find(t => t.tool === sessTool)) sessTool = tools[0].tool;
 
-  // селектор инструментов
+  // tool selector
   const seg = el(`<div class="seg" style="margin-bottom:14px;width:max-content"></div>`);
   for (const t of tools) {
     const sp = el(`<span${t.tool === sessTool ? ' class="on"' : ''}>${esc(t.tool)}</span>`);
@@ -132,25 +197,25 @@ function renderSessions(s) {
   const cur = tools.find(t => t.tool === sessTool) || tools[0];
   const ss = cur.stats || {};
   const note = cur.tool === "cursor"
-    ? '<div style="margin-top:14px;font-size:11px;color:var(--dim);font-family:var(--mono)">Cursor: токены/стоимость за серверным API — локально недоступны</div>'
+    ? `<div style="margin-top:14px;font-size:11px;color:var(--dim);font-family:var(--mono)">${t('cursorNote')}</div>`
     : "";
   const flagged = (ss.flagged || []).map(f =>
-    `<div class="flag"><div>${esc(f.project)} · ${Math.round(f.durationMin)} мин<div class="p-meta" style="color:var(--dim);font-family:var(--mono);font-size:10px">${f.iterations} итераций · ${fmtUSD(f.cost)}</div></div><span class="tag">застревание?</span></div>`
+    `<div class="flag"><div>${esc(f.project)} · ${Math.round(f.durationMin)} ${t('min')}<div class="p-meta" style="color:var(--dim);font-family:var(--mono);font-size:10px">${f.iterations} ${t('iterations')} · ${fmtUSD(f.cost)}</div></div><span class="tag">${t('stuck')}</span></div>`
   ).join("");
   host.appendChild(el(`<div class="grid2">
-    <div class="shell"><div class="core"><div class="ctitle"><h3>Сессии: длительность × стоимость</h3><span class="meta">оранжевым — кандидаты на трение</span></div>${scatter(ss.scatter || [])}</div></div>
-    <div class="shell"><div class="core"><div class="ctitle"><h3>На сессию (медиана)</h3><span class="meta">${esc(cur.tool)}</span></div>
-      <div class="sess-stats"><div class="sess-stat"><div class="n">${Math.round(ss.medianDurationMin || 0)}<span style="font-size:12px;color:var(--dim)">мин</span></div><div class="l">активная длительность</div><div class="h">p90 ${Math.round(ss.p90DurationMin || 0)}м</div></div>
-      <div class="sess-stat"><div class="n">${fmtTok(ss.medianTokens || 0)}</div><div class="l">токенов</div><div class="h">p90 ${fmtTok(ss.p90Tokens || 0)}</div></div></div>
-      <div class="sess-stats" style="margin-top:8px"><div class="sess-stat"><div class="n">${Math.round(ss.medianIterations || 0)}</div><div class="l">обращений к модели</div><div class="h">p90 ${Math.round(ss.p90Iterations || 0)}</div></div>
-      <div class="sess-stat"><div class="n">${fmtUSD(ss.medianCost || 0)}</div><div class="l">стоимость</div><div class="h">p90 ${fmtUSD(ss.p90Cost || 0)}</div></div></div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('sessDurCost')}</h3><span class="meta">${t('orangeCandidates')}</span></div>${scatter(ss.scatter || [])}</div></div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('perSessionMedian')}</h3><span class="meta">${esc(cur.tool)}</span></div>
+      <div class="sess-stats"><div class="sess-stat"><div class="n">${Math.round(ss.medianDurationMin || 0)}<span style="font-size:12px;color:var(--dim)">${t('min')}</span></div><div class="l">${t('activeDuration')}</div><div class="h">p90 ${Math.round(ss.p90DurationMin || 0)}m</div></div>
+      <div class="sess-stat"><div class="n">${fmtTok(ss.medianTokens || 0)}</div><div class="l">${t('tokensLabel')}</div><div class="h">p90 ${fmtTok(ss.p90Tokens || 0)}</div></div></div>
+      <div class="sess-stats" style="margin-top:8px"><div class="sess-stat"><div class="n">${Math.round(ss.medianIterations || 0)}</div><div class="l">${t('modelCalls')}</div><div class="h">p90 ${Math.round(ss.p90Iterations || 0)}</div></div>
+      <div class="sess-stat"><div class="n">${fmtUSD(ss.medianCost || 0)}</div><div class="l">${t('costLabel')}</div><div class="h">p90 ${fmtUSD(ss.p90Cost || 0)}</div></div></div>
       ${note}
-      <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px"><div style="font-size:11px;color:var(--muted);margin-bottom:8px">Требуют внимания</div>${flagged || '<div class="subtitle">нет выраженных выбросов</div>'}</div>
+      <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px"><div style="font-size:11px;color:var(--muted);margin-bottom:8px">${t('needsAttention')}</div>${flagged || `<div class="subtitle">${t('noClearOutliers')}</div>`}</div>
     </div></div>
   </div>`));
 }
 
-// плавающий tooltip: следует за курсором над любым элементом с атрибутом data-tip
+// floating tooltip: follows cursor over any element with data-tip attribute
 const tip = el('<div class="tooltip"></div>');
 document.body.appendChild(tip);
 document.addEventListener("mousemove", (e) => {
@@ -172,7 +237,8 @@ async function load() {
     if (!r.ok) throw new Error("HTTP "+r.status);
     render(await r.json());
   } catch (e) {
-    $("#app").innerHTML = `<p class="subtitle" style="padding:40px 0">Ошибка загрузки: ${e.message}</p>`;
+    $("#app").innerHTML = `<p class="subtitle" style="padding:40px 0">${t('loadError')}: ${e.message}</p>`;
   }
 }
+renderLang();
 load();
