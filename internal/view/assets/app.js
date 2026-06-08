@@ -53,7 +53,7 @@ let lastSummary = null;
 let sessTool = null;
 
 const $ = (sel) => document.querySelector(sel);
-const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; };
+const el = (html) => { const tmpl = document.createElement("template"); tmpl.innerHTML = html.trim(); return tmpl.content.firstChild; };
 const esc = (s) => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 const fmtUSD = (n) => "$" + Math.round(n).toLocaleString(locale());
 const fmtTok = (n) => n >= 1e9 ? (n/1e9).toFixed(1)+"B" : n >= 1e6 ? (n/1e6).toFixed(0)+"M" : n.toLocaleString(locale());
@@ -165,10 +165,10 @@ function render(s) {
     <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byModel')}</h3><span class="meta">${t('shareUsd')}</span></div>${bars(s.byModel||[], m=>m.model, m=>m.cost, maxModel, m=>`${esc(m.model)}<br><b>${m.cost>0?fmtUSD(m.cost):"~est"}</b> · ${m.events} ${t('events')}`)}</div></div>
   </div>`));
   // by tool + top projects + activity
-  const maxTool = Math.max(...(s.byTool||[]).map(t=>t.cost),1);
+  const maxTool = Math.max(...(s.byTool||[]).map(tool=>tool.cost),1);
   const proj = (s.topProjects||[]).map(p=>`<div class="proj"><div><div>${esc(p.project)}</div><div class="p-meta">${p.sessions}${t('sessionsSuffix')}</div></div><span style="font-family:var(--mono);font-variant-numeric:tabular-nums">${fmtUSD(p.cost)}</span></div>`).join("");
   app.appendChild(el(`<div class="grid3">
-    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byTool')}</h3></div>${bars(s.byTool||[], t=>t.tool, t=>t.cost, maxTool, t=>`${esc(t.tool)}<br><b>${t.cost>0?fmtUSD(t.cost):"~est"}</b> · ${fmtTok(t.tokens)} ${I18N[lang].tokShort} · ${t.events} ${I18N[lang].evShort}`)}<div style="margin-top:12px;font-size:11px;color:var(--dim);font-family:var(--mono)">${t('cursorActivityOnly')}</div></div></div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byTool')}</h3></div>${bars(s.byTool||[], tool=>tool.tool, tool=>tool.cost, maxTool, tool=>`${esc(tool.tool)}<br><b>${tool.cost>0?fmtUSD(tool.cost):"~est"}</b> · ${fmtTok(tool.tokens)} ${t('tokShort')} · ${tool.events} ${t('evShort')}`)}<div style="margin-top:12px;font-size:11px;color:var(--dim);font-family:var(--mono)">${t('cursorActivityOnly')}</div></div></div>
     <div class="shell"><div class="core"><div class="ctitle"><h3>${t('topProjects')}</h3><span class="meta">${t('perTask')}</span></div>${proj||`<div class="subtitle">${t('nodata')}</div>`}</div></div>
     <div class="shell"><div class="core"><div class="ctitle"><h3>${t('activity')}</h3><span class="meta">${t('sessionsPerDay')}</span></div><div style="font-size:30px;font-weight:600;font-variant-numeric:tabular-nums">${k.sessions}</div><div class="ksub">${t('sessionsInPeriod')}</div></div></div>
   </div>`));
@@ -183,18 +183,18 @@ function renderSessions(s) {
   host.appendChild(el(`<div class="eyebrow">${t('sessionAnalytics')} · <b style="color:var(--acc)">${t('signalNotExact')}</b> · ${t('selfCoaching')}</div>`));
   const tools = s.sessionsByTool || [];
   if (!tools.length) { host.appendChild(el(`<div class="subtitle">${t('noSessionData')}</div>`)); return; }
-  if (sessTool === null || !tools.find(t => t.tool === sessTool)) sessTool = tools[0].tool;
+  if (sessTool === null || !tools.find(tool => tool.tool === sessTool)) sessTool = tools[0].tool;
 
   // tool selector
   const seg = el(`<div class="seg" style="margin-bottom:14px;width:max-content"></div>`);
-  for (const t of tools) {
-    const sp = el(`<span${t.tool === sessTool ? ' class="on"' : ''}>${esc(t.tool)}</span>`);
-    sp.onclick = () => { sessTool = t.tool; renderSessions(s); };
+  for (const tool of tools) {
+    const sp = el(`<span${tool.tool === sessTool ? ' class="on"' : ''}>${esc(tool.tool)}</span>`);
+    sp.onclick = () => { sessTool = tool.tool; renderSessions(s); };
     seg.appendChild(sp);
   }
   host.appendChild(seg);
 
-  const cur = tools.find(t => t.tool === sessTool) || tools[0];
+  const cur = tools.find(tool => tool.tool === sessTool) || tools[0];
   const ss = cur.stats || {};
   const note = cur.tool === "cursor"
     ? `<div style="margin-top:14px;font-size:11px;color:var(--dim);font-family:var(--mono)">${t('cursorNote')}</div>`
@@ -241,4 +241,5 @@ async function load() {
   }
 }
 renderLang();
+renderPeriod();
 load();
