@@ -26,6 +26,8 @@ const I18N = {
     statTip: "Median = a typical session (half higher, half lower). p90 = 90% of sessions are below this; the heaviest 10% go above it.",
     stuckTip: "Many model calls and high cost in one session — the model likely got stuck here.",
     barTip: "Bar length = this model's share of total cost (longest = most expensive). Gray / ~est = models with no known price.",
+    activeDaysWord: "active days", perDaySfx: "/day", avgWord: "avg",
+    activityTip: "Sessions per day over the period — taller bars = busier days. Hover a bar for the date.",
     share: "Share ↗", shareTitle: "Share your stats", dl: "Download", copyImg: "Copy image", copied: "Copied!", postX: "Post on X",
     cardHeadline: "My AI coding spend", periodAll: "all time", periodPrefix: "last ", periodDays: " days",
     trackYours: "track yours →",
@@ -60,6 +62,8 @@ const I18N = {
     statTip: "Медиана — типичная сессия (половина выше, половина ниже). p90 — порог: 90% сессий ниже него, верхние 10% (самые тяжёлые) — выше.",
     stuckTip: "Много обращений к модели и высокая стоимость за одну сессию — модель, вероятно, забуксовала.",
     barTip: "Длина полоски = доля стоимости модели (самая длинная — самая дорогая). Серое / ~est — модели без известной цены.",
+    activeDaysWord: "активных дней", perDaySfx: "/день", avgWord: "в среднем",
+    activityTip: "Сессии по дням за период — выше столбик, активнее день. Наведи на столбик, чтобы увидеть дату.",
     share: "Поделиться ↗", shareTitle: "Поделиться статистикой", dl: "Скачать", copyImg: "Копировать", copied: "Скопировано!", postX: "В X",
     cardHeadline: "Мои траты на ИИ-код", periodAll: "всё время", periodPrefix: "последние ", periodDays: " дн.",
     trackYours: "посчитай свои →",
@@ -176,6 +180,20 @@ function kpiCard(label, num, sub, accent, tip) {
   return `<div class="shell"><div class="core"><div class="klabel">${accent?'<span class="kdot"></span> ':''}${label}${tip?info(tip):''}</div><div class="knum">${num}</div><div class="ksub">${sub||""}</div></div></div>`;
 }
 
+// мини бар-чарт сессий по дням
+function activityChart(data) {
+  if (!data || !data.length) return `<div class="subtitle" style="margin-top:12px">${t('nodata')}</div>`;
+  const W = 300, H = 84, max = Math.max(...data.map(d => d.sessions), 1), n = data.length, bw = W / n;
+  const bars = data.map((d, i) => {
+    const h = Math.max(2, (d.sessions / max) * (H - 6)), x = i * bw;
+    const tip = `${fmtDate(d.date)} · ${d.sessions} ${t('sessionsSuffix').trim()}`;
+    return `<rect x="${(x + bw * 0.12).toFixed(1)}" y="${(H - h).toFixed(1)}" width="${(bw * 0.76).toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" fill="url(#actg)" data-tip="${escAttr(tip)}"/>`;
+  }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none" style="display:block;margin-top:12px">
+    <defs><linearGradient id="actg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fb923c"/><stop offset="1" stop-color="#ea580c" stop-opacity=".7"/></linearGradient></defs>
+    ${bars}</svg>`;
+}
+
 function render(s) {
   lastSummary = s;
   renderLang();
@@ -203,7 +221,7 @@ function render(s) {
   app.appendChild(el(`<div class="grid3">
     <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byTool')}</h3></div>${bars(s.byTool||[], tool=>tool.tool, tool=>tool.cost, maxTool, tool=>`${esc(tool.tool)}<br><b>${tool.cost>0?fmtUSD(tool.cost):"~est"}</b> · ${fmtTok(tool.tokens)} ${t('tokShort')} · ${tool.events} ${t('evShort')}`)}<div style="margin-top:12px;font-size:11px;color:var(--dim);font-family:var(--mono)">${t('cursorActivityOnly')}</div></div></div>
     <div class="shell"><div class="core"><div class="ctitle"><h3>${t('topProjects')}</h3><span class="meta">${t('perTask')}</span></div>${proj||`<div class="subtitle">${t('nodata')}</div>`}</div></div>
-    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('activity')}</h3><span class="meta">${t('sessionsPerDay')}</span></div><div style="font-size:30px;font-weight:600;font-variant-numeric:tabular-nums">${k.sessions}</div><div class="ksub">${t('sessionsInPeriod')}</div></div></div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('activity')}${info(t('activityTip'))}</h3><span class="meta">${t('sessionsPerDay')}</span></div><div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap"><div style="font-size:30px;font-weight:600;font-variant-numeric:tabular-nums">${k.sessions}</div><div class="ksub">${k.activeDays} ${t('activeDaysWord')} · ${t('avgWord')} ${k.activeDays?(k.sessions/k.activeDays).toFixed(1):'0'}${t('perDaySfx')}</div></div>${activityChart(s.activity)}</div></div>
   </div>`));
   // session analytics
   app.appendChild(el(`<div id="sess"></div>`));
