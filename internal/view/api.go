@@ -3,6 +3,7 @@ package view
 import (
 	"time"
 
+	"github.com/rshatskiy/tokenburning/internal/aggregate"
 	"github.com/rshatskiy/tokenburning/internal/store"
 )
 
@@ -35,11 +36,9 @@ type Summary struct {
 
 // BuildSummary собирает все агрегаты за период в один объект для фронта.
 func BuildSummary(db *store.DB, period string) (Summary, error) {
-	days := parsePeriodDays(period)
-	var since time.Time // нулевое время = «всё»
-	if days > 0 {
-		since = time.Now().UTC().AddDate(0, 0, -days)
-	}
+	// Окно: «days календарных суток, сегодня включительно» в локальном поясе —
+	// привязано к локальной полуночи, не к текущему времени суток (см. aggregate.SinceForDays).
+	since := aggregate.SinceForDays(parsePeriodDays(period), time.Now())
 	var s Summary
 	var err error
 	s.Period = period

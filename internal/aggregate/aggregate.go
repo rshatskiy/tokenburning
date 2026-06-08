@@ -59,13 +59,22 @@ type Payload struct {
 	Depth         *DepthAgg   `json:"depth,omitempty"`
 }
 
-// periodSince конвертирует период (7d/30d/90d/all) в момент since (zero = всё).
-func periodSince(period string) time.Time {
-	days := map[string]int{"7d": 7, "30d": 30, "90d": 90}[period]
-	if period == "all" || days == 0 {
+// SinceForDays возвращает начало окна выборки: локальная полночь дня (сегодня−(days−1)),
+// т.е. «days календарных суток, сегодня включительно» в локальном поясе. days<=0 → нулевое
+// время («всё»). Окно привязано к полуночи (не к текущему времени суток), чтобы крайние дни
+// графика были полными, а сутки совпадали с локальным календарём пользователя.
+func SinceForDays(days int, now time.Time) time.Time {
+	if days <= 0 {
 		return time.Time{}
 	}
-	return time.Now().UTC().AddDate(0, 0, -days)
+	y, m, d := now.Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, now.Location()).AddDate(0, 0, -(days - 1))
+}
+
+// periodSince конвертирует период (7d/30d/90d/all) в момент since (zero = всё), локальный пояс.
+func periodSince(period string) time.Time {
+	days := map[string]int{"7d": 7, "30d": 30, "90d": 90}[period]
+	return SinceForDays(days, time.Now())
 }
 
 func has(cats []string, c string) bool {

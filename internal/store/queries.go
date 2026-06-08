@@ -36,13 +36,14 @@ type KPI struct {
 // KPITotals считает сводные KPI по событиям начиная с since.
 func (d *DB) KPITotals(since time.Time) (KPI, error) {
 	var k KPI
-	// Дни/сессии считаются по UTC-дате (date(ts,'unixepoch')); COUNT(DISTINCT session_id)
-	// исключает события без session_id (NULL) — это намеренно: считаем только известные сессии.
+	// Дни/сессии считаются по ЛОКАЛЬНОЙ дате (date(ts,'unixepoch','localtime')) —
+	// процесс дашборда работает на машине пользователя, так что это его пояс.
+	// COUNT(DISTINCT session_id) исключает события без session_id (NULL) — намеренно.
 	row := d.db.QueryRow(`SELECT
         COALESCE(SUM(cost_amount),0),
         COALESCE(SUM(MAX(tok_total, tok_input+tok_output+tok_cache_read+tok_cache_1h+tok_cache_5m+tok_reasoning)),0),
         COALESCE(SUM(tok_cache_read),0),
-        COUNT(DISTINCT date(ts,'unixepoch')),
+        COUNT(DISTINCT date(ts,'unixepoch','localtime')),
         COUNT(DISTINCT session_id)
         FROM events WHERE ts >= ?`, since.Unix())
 	if err := row.Scan(&k.Cost, &k.Tokens, &k.CacheReadTokens, &k.ActiveDays, &k.Sessions); err != nil {
@@ -68,10 +69,10 @@ type DayCost struct {
 	Cost float64 `json:"cost"`
 }
 
-// CostOverTime — стоимость по дням (UTC) начиная с since.
+// CostOverTime — стоимость по дням (локальный пояс) начиная с since.
 func (d *DB) CostOverTime(since time.Time) ([]DayCost, error) {
-	rows, err := d.db.Query(`SELECT date(ts,'unixepoch'), COALESCE(SUM(cost_amount),0)
-        FROM events WHERE ts >= ? GROUP BY date(ts,'unixepoch') ORDER BY 1`, since.Unix())
+	rows, err := d.db.Query(`SELECT date(ts,'unixepoch','localtime'), COALESCE(SUM(cost_amount),0)
+        FROM events WHERE ts >= ? GROUP BY date(ts,'unixepoch','localtime') ORDER BY 1`, since.Unix())
 	if err != nil {
 		return nil, err
 	}
@@ -119,10 +120,10 @@ type DaySessions struct {
 	Sessions int    `json:"sessions"`
 }
 
-// ActivityByDay — число сессий по дням (UTC) начиная с since.
+// ActivityByDay — число сессий по дням (локальный пояс) начиная с since.
 func (d *DB) ActivityByDay(since time.Time) ([]DaySessions, error) {
-	rows, err := d.db.Query(`SELECT date(ts,'unixepoch'), COUNT(DISTINCT session_id)
-        FROM events WHERE ts >= ? GROUP BY date(ts,'unixepoch') ORDER BY 1`, since.Unix())
+	rows, err := d.db.Query(`SELECT date(ts,'unixepoch','localtime'), COUNT(DISTINCT session_id)
+        FROM events WHERE ts >= ? GROUP BY date(ts,'unixepoch','localtime') ORDER BY 1`, since.Unix())
 	if err != nil {
 		return nil, err
 	}
