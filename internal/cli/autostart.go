@@ -11,7 +11,7 @@ import (
 
 func newEnableCmd() *cobra.Command {
 	var intervalMin int
-	var to string
+	var to, token string
 	var breadth, depth bool
 	cmd := &cobra.Command{
 		Use:   "enable",
@@ -33,7 +33,7 @@ func newEnableCmd() *cobra.Command {
 				cats = append(cats, "depth")
 			}
 			if to != "" && len(cats) > 0 {
-				cfg.Push = config.PushCfg{Enabled: true, Categories: cats, Endpoint: to}
+				cfg.Push = config.PushCfg{Enabled: true, Categories: cats, Endpoint: to, Token: token}
 			}
 			if err := config.Save(cfg); err != nil {
 				return err
@@ -57,6 +57,7 @@ func newEnableCmd() *cobra.Command {
 	}
 	cmd.Flags().IntVar(&intervalMin, "interval-min", 0, "интервал сбора в минутах (по умолчанию 15)")
 	cmd.Flags().StringVar(&to, "to", "", "URL сервера для отправки агрегатов (опционально)")
+	cmd.Flags().StringVar(&token, "token", "", "токен коллектора для отправки")
 	cmd.Flags().BoolVar(&breadth, "breadth", false, "слать breadth-агрегаты (с --to)")
 	cmd.Flags().BoolVar(&depth, "depth", false, "слать depth-сигналы (с --to)")
 	return cmd

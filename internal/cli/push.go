@@ -14,7 +14,7 @@ import (
 
 func newPushCmd() *cobra.Command {
 	var breadth, depth, dryRun bool
-	var to, period string
+	var to, period, token string
 	cmd := &cobra.Command{
 		Use:   "push",
 		Short: "Отдать наверх агрегаты по согласию (только производные; ничего сырого не уходит)",
@@ -62,7 +62,10 @@ func newPushCmd() *cobra.Command {
 			if to == "" {
 				return fmt.Errorf("сервер не задан: --to <url> или TOKENBURNING_SERVER (приёмник — отдельный спек; пока используйте --dry-run)")
 			}
-			if err := aggregate.Push(payload, to); err != nil {
+			if token == "" {
+				token = os.Getenv("TOKENBURNING_TOKEN")
+			}
+			if err := aggregate.Push(payload, to, token); err != nil {
 				return err
 			}
 			cmd.Printf("отправлено наверх: %v (%d байт)\n", cats, len(data))
@@ -74,5 +77,6 @@ func newPushCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "напечатать точный payload, ничего не отправляя")
 	cmd.Flags().StringVar(&to, "to", "", "URL сервера-приёмника (или env TOKENBURNING_SERVER)")
 	cmd.Flags().StringVar(&period, "period", "30d", "период: 7d|30d|90d|all")
+	cmd.Flags().StringVar(&token, "token", "", "токен коллектора (выдаётся на /install сервера)")
 	return cmd
 }

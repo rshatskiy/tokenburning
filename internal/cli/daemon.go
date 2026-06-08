@@ -41,6 +41,7 @@ func newDaemonCmd() *cobra.Command {
 				PushEnabled:    cfg.Push.Enabled,
 				PushCategories: cfg.Push.Categories,
 				PushEndpoint:   cfg.Push.Endpoint,
+				PushToken:      cfg.Push.Token,
 				Log:            func(s string) { cmd.Println(s) },
 			})
 		},

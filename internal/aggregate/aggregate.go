@@ -99,14 +99,22 @@ func normalizeModel(m string) string {
 	return "other"
 }
 
-// Push отправляет payload на endpoint (POST endpoint+"/v1/aggregates"). Только производное.
-func Push(p Payload, endpoint string) error {
+// Push отправляет payload на endpoint с Bearer-токеном. Только производное.
+func Push(p Payload, endpoint, token string) error {
 	data, err := json.Marshal(p)
 	if err != nil {
 		return err
 	}
+	req, err := http.NewRequest(http.MethodPost, endpoint+"/v1/aggregates", bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 	c := &http.Client{Timeout: 30 * time.Second}
-	resp, err := c.Post(endpoint+"/v1/aggregates", "application/json", bytes.NewReader(data))
+	resp, err := c.Do(req)
 	if err != nil {
 		return fmt.Errorf("push: %w", err)
 	}
