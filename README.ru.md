@@ -128,16 +128,14 @@ tokenburning push --breadth --depth --dry-run
 
 ## Архитектура
 
-Один Go-модуль, два бинаря:
+Этот репозиторий — **коллектор**: один статический Go-бинарь (`tokenburning`). Адаптеры для Claude Code (append-JSONL), Codex (гибрид) и Cursor (SQLite). Pure-Go SQLite (без CGO) → лёгкая кросс-компиляция. Всё в этом репо работает локально; ничего не уходит без твоего согласия.
 
-- **`tokenburning`** — коллектор / CLI. Адаптеры для Claude Code (append-JSONL), Codex (гибрид) и Cursor (SQLite). Pure-Go SQLite (без CGO) → лёгкая кросс-компиляция.
-- **`server`** — командная платформа (Go + PostgreSQL, серверный рендер, passwordless-вход по email, гео-роутинг `.ru` / `.online`, RU + EN). Самостоятельное развёртывание через Docker — см. **[deploy/README.md](deploy/README.md)**.
+Опциональная **командная платформа — это хостинговый сервис** на [tokenburning.ru](https://tokenburning.ru) / [tokenburning.online](https://tokenburning.online) (не входит в этот open-source репозиторий). Коллектор общается с ним только через `connect` / `push --to`, отправляя производные агрегаты по согласию — без исходников, промптов и путей проектов.
 
 ## Сборка из исходников
 
 ```sh
 go build ./cmd/tokenburning   # коллектор
-go build ./cmd/server         # командный сервер
 go test ./...
 ```
 

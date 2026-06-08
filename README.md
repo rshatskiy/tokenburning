@@ -128,16 +128,14 @@ tokenburning push --breadth --depth --dry-run
 
 ## Architecture
 
-A single Go module, two binaries:
+This repo is the **collector** — a single static Go binary (`tokenburning`). Adapters for Claude Code (append-JSONL), Codex (hybrid), and Cursor (SQLite). Pure-Go SQLite (no CGO) → trivial cross-compilation. Everything in this repo runs locally; nothing is sent unless you opt in.
 
-- **`tokenburning`** — the collector / CLI. Adapters for Claude Code (append-JSONL), Codex (hybrid), and Cursor (SQLite). Pure-Go SQLite (no CGO) → trivial cross-compilation.
-- **`server`** — the team platform (Go + PostgreSQL, server-rendered, passwordless email login, geo-routed `.ru` / `.online`, RU + EN). See **[deploy/README.md](deploy/README.md)** to self-host with Docker.
+The optional **team platform is a hosted service** at [tokenburning.ru](https://tokenburning.ru) / [tokenburning.online](https://tokenburning.online) (not part of this open-source repo). The collector talks to it only via `connect` / `push --to`, sending consent-gated derived aggregates — no source, no prompts, no project paths.
 
 ## Build from source
 
 ```sh
-go build ./cmd/tokenburning   # collector
-go build ./cmd/server         # team server
+go build ./cmd/tokenburning   # the collector
 go test ./...
 ```
 
