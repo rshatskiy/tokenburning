@@ -25,6 +25,7 @@ const I18N = {
     sessTip: "Session numbers are estimated from your local logs — directional signals to understand your own workflow, not exact billing.",
     statTip: "Median = a typical session (half higher, half lower). p90 = 90% of sessions are below this; the heaviest 10% go above it.",
     stuckTip: "Many model calls and high cost in one session — the model likely got stuck here.",
+    barTip: "Bar length = this model's share of total cost (longest = most expensive). Gray / ~est = models with no known price.",
     share: "Share ↗", shareTitle: "Share your stats", dl: "Download", copyImg: "Copy image", copied: "Copied!", postX: "Post on X",
     cardHeadline: "My AI coding spend", periodAll: "all time", periodPrefix: "last ", periodDays: " days",
     trackYours: "track yours →",
@@ -58,6 +59,7 @@ const I18N = {
     sessTip: "Цифры по сессиям — оценка по локальным логам: ориентир, чтобы понять свой стиль работы, а не точный счёт.",
     statTip: "Медиана — типичная сессия (половина выше, половина ниже). p90 — порог: 90% сессий ниже него, верхние 10% (самые тяжёлые) — выше.",
     stuckTip: "Много обращений к модели и высокая стоимость за одну сессию — модель, вероятно, забуксовала.",
+    barTip: "Длина полоски = доля стоимости модели (самая длинная — самая дорогая). Серое / ~est — модели без известной цены.",
     share: "Поделиться ↗", shareTitle: "Поделиться статистикой", dl: "Скачать", copyImg: "Копировать", copied: "Скопировано!", postX: "В X",
     cardHeadline: "Мои траты на ИИ-код", periodAll: "всё время", periodPrefix: "последние ", periodDays: " дн.",
     trackYours: "посчитай свои →",
@@ -87,6 +89,8 @@ const fmtDate = (s) => { const p = String(s).split("-"); return p.length === 3 ?
 // tip-string is already html-safe (names via esc, tags <br>/<b> are literal);
 // for data-tip attribute only quotes need escaping
 const escAttr = (s) => String(s).replace(/"/g, "&quot;");
+// «?»-иконка с подсказкой (показывается по наведению/клику — см. обработчик ниже)
+const info = (tip) => `<span class="info" data-info="${escAttr(tip)}" role="button" tabindex="0" aria-label="?">?</span>`;
 
 function renderLang() {
   const seg = $("#lang"); if (!seg) return; seg.innerHTML = "";
@@ -169,8 +173,7 @@ function scatter(points) {
 }
 
 function kpiCard(label, num, sub, accent, tip) {
-  const ta = tip ? ` data-tip="${escAttr(tip)}"` : "";
-  return `<div class="shell"><div class="core"><div class="klabel"${ta}>${accent?'<span class="kdot"></span> ':''}${label}</div><div class="knum">${num}</div><div class="ksub">${sub||""}</div></div></div>`;
+  return `<div class="shell"><div class="core"><div class="klabel">${accent?'<span class="kdot"></span> ':''}${label}${tip?info(tip):''}</div><div class="knum">${num}</div><div class="ksub">${sub||""}</div></div></div>`;
 }
 
 function render(s) {
@@ -181,7 +184,7 @@ function render(s) {
   const k = s.kpis;
   // KPI
   const cachePct = k.tokens ? Math.round(k.cacheReadTokens/k.tokens*100) : 0;
-  const cacheSub = `${cachePct}<span data-tip="${escAttr(t('cacheTip'))}">${t('cacheRead')}</span>`;
+  const cacheSub = `${cachePct}${t('cacheRead')}${info(t('cacheTip'))}`;
   app.appendChild(el(`<div class="kpis">
     ${kpiCard(t('cost'), fmtUSD(k.cost), cacheSub, true, t('costTip'))}
     ${kpiCard(t('tokens'), fmtTok(k.tokens), "")}
@@ -192,7 +195,7 @@ function render(s) {
   const maxModel = Math.max(...(s.byModel||[]).map(m=>m.cost),1);
   app.appendChild(el(`<div class="grid2">
     <div class="shell"><div class="core"><div class="ctitle"><h3>${t('costOverTime')}</h3><span class="meta">${t('usdPerDay')}</span></div>${areaChart(s.costOverTime||[])}</div></div>
-    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byModel')}</h3><span class="meta">${t('shareUsd')} · ${t('tokShort')}</span></div>${bars(s.byModel||[], m=>m.model, m=>m.cost, maxModel, m=>`${esc(m.model)}<br><b>${m.cost>0?fmtUSD(m.cost):"~est"}</b> · ${fmtTok(m.tokens)} ${t('tokShort')} · ${m.events} ${t('events')}`, m=>`${fmtTok(m.tokens)} ${t('tokShort')}`)}</div></div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byModel')}</h3><span class="meta">${t('shareUsd')} · ${t('tokShort')}${info(t('barTip'))}</span></div>${bars(s.byModel||[], m=>m.model, m=>m.cost, maxModel, m=>`${esc(m.model)}<br><b>${m.cost>0?fmtUSD(m.cost):"~est"}</b> · ${fmtTok(m.tokens)} ${t('tokShort')} · ${m.events} ${t('events')}`, m=>`${fmtTok(m.tokens)} ${t('tokShort')}`)}</div></div>
   </div>`));
   // by tool + top projects + activity
   const maxTool = Math.max(...(s.byTool||[]).map(tool=>tool.cost),1);
@@ -210,7 +213,7 @@ function render(s) {
 function renderSessions(s) {
   const host = $("#sess");
   host.innerHTML = "";
-  host.appendChild(el(`<div class="eyebrow" data-tip="${escAttr(t('sessTip'))}">${t('sessionAnalytics')} · <b style="color:var(--acc)">${t('signalNotExact')}</b> · ${t('selfCoaching')}</div>`));
+  host.appendChild(el(`<div class="eyebrow">${t('sessionAnalytics')} · <b style="color:var(--acc)">${t('signalNotExact')}</b> · ${t('selfCoaching')}${info(t('sessTip'))}</div>`));
   const tools = s.sessionsByTool || [];
   if (!tools.length) { host.appendChild(el(`<div class="subtitle">${t('noSessionData')}</div>`)); return; }
   if (sessTool === null || !tools.find(tool => tool.tool === sessTool)) sessTool = tools[0].tool;
@@ -230,17 +233,17 @@ function renderSessions(s) {
     ? `<div style="margin-top:14px;font-size:11px;color:var(--dim);font-family:var(--mono)">${t('cursorNote')}</div>`
     : "";
   const flagged = (ss.flagged || []).map(f =>
-    `<div class="flag"><div>${esc(f.project)} · ${Math.round(f.durationMin)} ${t('min')}<div class="p-meta" style="color:var(--dim);font-family:var(--mono);font-size:10px">${f.iterations} ${t('iterations')} · ${fmtUSD(f.cost)}</div></div><span class="tag" data-tip="${escAttr(t('stuckTip'))}">${t('stuck')}</span></div>`
+    `<div class="flag"><div>${esc(f.project)} · ${Math.round(f.durationMin)} ${t('min')}<div class="p-meta" style="color:var(--dim);font-family:var(--mono);font-size:10px">${f.iterations} ${t('iterations')} · ${fmtUSD(f.cost)}</div></div><span class="tag">${t('stuck')}</span></div>`
   ).join("");
   host.appendChild(el(`<div class="grid2">
     <div class="shell"><div class="core"><div class="ctitle"><h3>${t('sessDurCost')}</h3><span class="meta">${t('orangeCandidates')}</span></div>${scatter(ss.scatter || [])}</div></div>
-    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('perSessionMedian')}</h3><span class="meta">${esc(cur.tool)}</span></div>
-      <div class="sess-stats"><div class="sess-stat" data-tip="${escAttr(t('statTip'))}"><div class="n">${Math.round(ss.medianDurationMin || 0)}<span style="font-size:12px;color:var(--dim)">${t('min')}</span></div><div class="l">${t('activeDuration')}</div><div class="h">p90 ${Math.round(ss.p90DurationMin || 0)}m</div></div>
-      <div class="sess-stat" data-tip="${escAttr(t('statTip'))}"><div class="n">${fmtTok(ss.medianTokens || 0)}</div><div class="l">${t('tokensLabel')}</div><div class="h">p90 ${fmtTok(ss.p90Tokens || 0)}</div></div></div>
-      <div class="sess-stats" style="margin-top:8px"><div class="sess-stat" data-tip="${escAttr(t('statTip'))}"><div class="n">${Math.round(ss.medianIterations || 0)}</div><div class="l">${t('modelCalls')}</div><div class="h">p90 ${Math.round(ss.p90Iterations || 0)}</div></div>
-      <div class="sess-stat" data-tip="${escAttr(t('statTip'))}"><div class="n">${fmtUSD(ss.medianCost || 0)}</div><div class="l">${t('costLabel')}</div><div class="h">p90 ${fmtUSD(ss.p90Cost || 0)}</div></div></div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('perSessionMedian')}${info(t('statTip'))}</h3><span class="meta">${esc(cur.tool)}</span></div>
+      <div class="sess-stats"><div class="sess-stat"><div class="n">${Math.round(ss.medianDurationMin || 0)}<span style="font-size:12px;color:var(--dim)">${t('min')}</span></div><div class="l">${t('activeDuration')}</div><div class="h">p90 ${Math.round(ss.p90DurationMin || 0)}m</div></div>
+      <div class="sess-stat"><div class="n">${fmtTok(ss.medianTokens || 0)}</div><div class="l">${t('tokensLabel')}</div><div class="h">p90 ${fmtTok(ss.p90Tokens || 0)}</div></div></div>
+      <div class="sess-stats" style="margin-top:8px"><div class="sess-stat"><div class="n">${Math.round(ss.medianIterations || 0)}</div><div class="l">${t('modelCalls')}</div><div class="h">p90 ${Math.round(ss.p90Iterations || 0)}</div></div>
+      <div class="sess-stat"><div class="n">${fmtUSD(ss.medianCost || 0)}</div><div class="l">${t('costLabel')}</div><div class="h">p90 ${fmtUSD(ss.p90Cost || 0)}</div></div></div>
       ${note}
-      <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px"><div style="font-size:11px;color:var(--muted);margin-bottom:8px">${t('needsAttention')}</div>${flagged || `<div class="subtitle">${t('noClearOutliers')}</div>`}</div>
+      <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px"><div style="font-size:11px;color:var(--muted);margin-bottom:8px">${t('needsAttention')}${info(t('stuckTip'))}</div>${flagged || `<div class="subtitle">${t('noClearOutliers')}</div>`}</div>
     </div></div>
   </div>`));
 }
@@ -259,6 +262,38 @@ document.addEventListener("mousemove", (e) => {
   if (y + r.height > window.innerHeight - 8) y = e.clientY - r.height - 14;
   tip.style.left = Math.max(8, x) + "px";
   tip.style.top = Math.max(8, y) + "px";
+});
+
+// info-иконки «?»: подсказка по наведению (десктоп) и по клику/тапу (мобайл),
+// позиционируется у иконки, текст переносится, не вылезает за экран.
+const itip = el('<div class="info-tip"></div>');
+document.body.appendChild(itip);
+let itipPinned = null;
+function showInfoTip(icon) {
+  itip.textContent = icon.getAttribute("data-info") || "";
+  itip.style.display = "block";
+  const r = icon.getBoundingClientRect();
+  const tr = itip.getBoundingClientRect();
+  let x = r.left + r.width / 2 - tr.width / 2;
+  let y = r.bottom + 8;
+  x = Math.max(8, Math.min(x, window.innerWidth - tr.width - 8));
+  if (y + tr.height > window.innerHeight - 8) y = r.top - tr.height - 8;
+  itip.style.left = Math.max(8, x) + "px";
+  itip.style.top = Math.max(8, y) + "px";
+}
+function hideInfoTip() { itip.style.display = "none"; itipPinned = null; }
+document.addEventListener("mouseover", (e) => {
+  const i = e.target.closest ? e.target.closest(".info") : null;
+  if (i) showInfoTip(i);
+});
+document.addEventListener("mouseout", (e) => {
+  const i = e.target.closest ? e.target.closest(".info") : null;
+  if (i && itipPinned !== i) hideInfoTip();
+});
+document.addEventListener("click", (e) => {
+  const i = e.target.closest ? e.target.closest(".info") : null;
+  if (i) { e.preventDefault(); e.stopPropagation(); itipPinned === i ? hideInfoTip() : (showInfoTip(i), itipPinned = i); return; }
+  if (itipPinned) hideInfoTip();
 });
 
 // ---- Share card (client-side; only safe aggregates — no project paths/sessions) ----
