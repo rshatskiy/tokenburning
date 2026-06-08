@@ -215,13 +215,17 @@ function render(s) {
     <div class="shell"><div class="core"><div class="ctitle"><h3>${t('costOverTime')}</h3><span class="meta">${t('usdPerDay')}</span></div>${areaChart(s.costOverTime||[])}</div></div>
     <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byModel')}</h3><span class="meta">${t('shareUsd')} · ${t('tokShort')}${info(t('barTip'))}</span></div>${bars(s.byModel||[], m=>m.model, m=>m.cost, maxModel, m=>`${esc(m.model)}<br><b>${m.cost>0?fmtUSD(m.cost):"~est"}</b> · ${fmtTok(m.tokens)} ${t('tokShort')} · ${m.events} ${t('events')}`, m=>`${fmtTok(m.tokens)} ${t('tokShort')}`)}</div></div>
   </div>`));
-  // by tool + top projects + activity
+  // слева стопкой: По инструментам + Активность · справа: Топ проектов
   const maxTool = Math.max(...(s.byTool||[]).map(tool=>tool.cost),1);
-  const proj = (s.topProjects||[]).map(p=>`<div class="proj"><div><div>${esc(p.project)}</div><div class="p-meta">${p.sessions}${t('sessionsSuffix')}</div></div><span style="font-family:var(--mono);font-variant-numeric:tabular-nums">${fmtUSD(p.cost)}</span></div>`).join("");
-  app.appendChild(el(`<div class="grid3">
-    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byTool')}</h3></div>${bars(s.byTool||[], tool=>tool.tool, tool=>tool.cost, maxTool, tool=>`${esc(tool.tool)}<br><b>${tool.cost>0?fmtUSD(tool.cost):"~est"}</b> · ${fmtTok(tool.tokens)} ${t('tokShort')} · ${tool.events} ${t('evShort')}`)}<div style="margin-top:12px;font-size:11px;color:var(--dim);font-family:var(--mono)">${t('cursorActivityOnly')}</div></div></div>
+  const shortProj = (p) => p.replace(/^(\/Users\/[^/]+\/|\/home\/[^/]+\/|[A-Za-z]:[\\/]Users[\\/][^\\/]+[\\/])/, "") || p;
+  const proj = (s.topProjects||[]).slice(0,6).map(p=>`<div class="proj" data-tip="${escAttr(p.project)}"><div><div>${esc(shortProj(p.project))}</div><div class="p-meta">${p.sessions}${t('sessionsSuffix')}</div></div><span style="font-family:var(--mono);font-variant-numeric:tabular-nums">${fmtUSD(p.cost)}</span></div>`).join("");
+  const avgDay = k.activeDays ? (k.sessions/k.activeDays).toFixed(1) : "0";
+  app.appendChild(el(`<div class="rowA">
+    <div class="stack">
+      <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byTool')}</h3><span class="meta">${t('shareUsd')} · ${t('tokShort')}</span></div>${bars(s.byTool||[], tool=>tool.tool, tool=>tool.cost, maxTool, tool=>`${esc(tool.tool)}<br><b>${tool.cost>0?fmtUSD(tool.cost):"~est"}</b> · ${fmtTok(tool.tokens)} ${t('tokShort')} · ${tool.events} ${t('evShort')}`, tool=>`${fmtTok(tool.tokens)} ${t('tokShort')}`)}<div style="margin-top:12px;font-size:11px;color:var(--dim);font-family:var(--mono)">${t('cursorActivityOnly')}</div></div></div>
+      <div class="shell"><div class="core"><div class="ctitle"><h3>${t('activity')}${info(t('activityTip'))}</h3><span class="meta">${t('sessionsPerDay')}</span></div><div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap"><div style="font-size:30px;font-weight:600;font-variant-numeric:tabular-nums">${k.sessions}</div><div class="ksub">${k.activeDays} ${t('activeDaysWord')} · ${t('avgWord')} ${avgDay}${t('perDaySfx')}</div></div>${activityChart(s.activity)}</div></div>
+    </div>
     <div class="shell"><div class="core"><div class="ctitle"><h3>${t('topProjects')}</h3><span class="meta">${t('perTask')}</span></div>${proj||`<div class="subtitle">${t('nodata')}</div>`}</div></div>
-    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('activity')}${info(t('activityTip'))}</h3><span class="meta">${t('sessionsPerDay')}</span></div><div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap"><div style="font-size:30px;font-weight:600;font-variant-numeric:tabular-nums">${k.sessions}</div><div class="ksub">${k.activeDays} ${t('activeDaysWord')} · ${t('avgWord')} ${k.activeDays?(k.sessions/k.activeDays).toFixed(1):'0'}${t('perDaySfx')}</div></div>${activityChart(s.activity)}</div></div>
   </div>`));
   // session analytics
   app.appendChild(el(`<div id="sess"></div>`));
