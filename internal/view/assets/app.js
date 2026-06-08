@@ -9,15 +9,22 @@ const I18N = {
     cursorNote: "Cursor: tokens/cost are behind the server API — unavailable locally",
     topProjects: "Top projects", perTask: "$ / task",
     activity: "Activity", sessionsPerDay: "sessions/day", sessionsInPeriod: "sessions in period",
-    sessionAnalytics: "session analytics", signalNotExact: "signal, not exact", selfCoaching: "self-coaching",
+    sessionAnalytics: "session analytics", signalNotExact: "estimates, not exact", selfCoaching: "for yourself",
     noSessionData: "no session data",
     perSessionUsdUp: "$ per session ↑", durationRight: "duration →",
-    normalSessions: "normal sessions", longExpensiveFriction: "long & expensive — friction",
-    sessDurCost: "Sessions: duration × cost", orangeCandidates: "orange — friction candidates",
+    normalSessions: "normal sessions", longExpensiveFriction: "long & costly",
+    sessDurCost: "Sessions: duration × cost", orangeCandidates: "orange = unusually long & costly",
     perSessionMedian: "Per session (median)", min: "min", activeDuration: "active duration",
     modelCalls: "model calls", needsAttention: "Needs attention", noClearOutliers: "no clear outliers",
     stuck: "stuck?", iter: "iter", iterations: "iterations", loadError: "Load error",
     tokensLabel: "tokens", costLabel: "cost",
+    bln: "B", mln: "M",
+    costTip: "Total across all your AI coding tools (Claude Code, Codex, Cursor).",
+    activeDaysTip: "Days you used an AI coding tool in this period.",
+    cacheTip: "Share of tokens read from cache — much cheaper than fresh ones.",
+    sessTip: "Session numbers are estimated from your local logs — directional signals to understand your own workflow, not exact billing.",
+    statTip: "Median = a typical session (half higher, half lower). p90 = 90% of sessions are below this; the heaviest 10% go above it.",
+    stuckTip: "Many model calls and high cost in one session — the model likely got stuck here.",
     share: "Share ↗", shareTitle: "Share your stats", dl: "Download", copyImg: "Copy image", copied: "Copied!", postX: "Post on X",
     cardHeadline: "My AI coding spend", periodAll: "all time", periodPrefix: "last ", periodDays: " days",
     trackYours: "track yours →",
@@ -35,15 +42,22 @@ const I18N = {
     cursorNote: "Cursor: токены/стоимость за серверным API — локально недоступны",
     topProjects: "Топ проектов", perTask: "$ / задача",
     activity: "Активность", sessionsPerDay: "сессий/день", sessionsInPeriod: "сессий за период",
-    sessionAnalytics: "аналитика сессий", signalNotExact: "сигнал, не точно", selfCoaching: "самокоучинг",
+    sessionAnalytics: "аналитика сессий", signalNotExact: "оценки, не точно", selfCoaching: "для себя",
     noSessionData: "нет данных по сессиям",
     perSessionUsdUp: "$ за сессию ↑", durationRight: "длительность →",
-    normalSessions: "обычные сессии", longExpensiveFriction: "долго и дорого — трение",
-    sessDurCost: "Сессии: длительность × стоимость", orangeCandidates: "оранжевым — кандидаты на трение",
+    normalSessions: "обычные сессии", longExpensiveFriction: "долгие и дорогие",
+    sessDurCost: "Сессии: длительность × стоимость", orangeCandidates: "оранжевые — необычно долгие и дорогие",
     perSessionMedian: "На сессию (медиана)", min: "мин", activeDuration: "активная длительность",
     modelCalls: "обращений к модели", needsAttention: "Требуют внимания", noClearOutliers: "нет выраженных выбросов",
-    stuck: "застревание?", iter: "итер", iterations: "итераций", loadError: "Ошибка загрузки",
+    stuck: "застрял?", iter: "итер", iterations: "итераций", loadError: "Ошибка загрузки",
     tokensLabel: "токенов", costLabel: "стоимость",
+    bln: " млрд", mln: " млн",
+    costTip: "Суммарно по всем твоим ИИ-инструментам (Claude Code, Codex, Cursor).",
+    activeDaysTip: "Дни, когда ты пользовался ИИ-инструментом за этот период.",
+    cacheTip: "Доля токенов, прочитанных из кэша — они намного дешевле обычных.",
+    sessTip: "Цифры по сессиям — оценка по локальным логам: ориентир, чтобы понять свой стиль работы, а не точный счёт.",
+    statTip: "Медиана — типичная сессия (половина выше, половина ниже). p90 — порог: 90% сессий ниже него, верхние 10% (самые тяжёлые) — выше.",
+    stuckTip: "Много обращений к модели и высокая стоимость за одну сессию — модель, вероятно, забуксовала.",
     share: "Поделиться ↗", shareTitle: "Поделиться статистикой", dl: "Скачать", copyImg: "Копировать", copied: "Скопировано!", postX: "В X",
     cardHeadline: "Мои траты на ИИ-код", periodAll: "всё время", periodPrefix: "последние ", periodDays: " дн.",
     trackYours: "посчитай свои →",
@@ -68,7 +82,7 @@ const $ = (sel) => document.querySelector(sel);
 const el = (html) => { const tmpl = document.createElement("template"); tmpl.innerHTML = html.trim(); return tmpl.content.firstChild; };
 const esc = (s) => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 const fmtUSD = (n) => "$" + Math.round(n).toLocaleString(locale());
-const fmtTok = (n) => n >= 1e9 ? (n/1e9).toFixed(1)+"B" : n >= 1e6 ? (n/1e6).toFixed(0)+"M" : n.toLocaleString(locale());
+const fmtTok = (n) => n >= 1e9 ? (n/1e9).toFixed(1)+t('bln') : n >= 1e6 ? (n/1e6).toFixed(0)+t('mln') : n.toLocaleString(locale());
 const fmtDate = (s) => { const p = String(s).split("-"); return p.length === 3 ? p[2]+"."+p[1] : s; };
 // tip-string is already html-safe (names via esc, tags <br>/<b> are literal);
 // for data-tip attribute only quotes need escaping
@@ -154,8 +168,9 @@ function scatter(points) {
     <div class="legend"><span><i style="background:rgba(255,255,255,.28)"></i>${t('normalSessions')}</span><span><i style="background:#fb923c"></i>${t('longExpensiveFriction')}</span></div>`;
 }
 
-function kpiCard(label, num, sub, accent) {
-  return `<div class="shell"><div class="core"><div class="klabel">${accent?'<span class="kdot"></span> ':''}${label}</div><div class="knum">${num}</div><div class="ksub">${sub||""}</div></div></div>`;
+function kpiCard(label, num, sub, accent, tip) {
+  const ta = tip ? ` data-tip="${escAttr(tip)}"` : "";
+  return `<div class="shell"><div class="core"><div class="klabel"${ta}>${accent?'<span class="kdot"></span> ':''}${label}</div><div class="knum">${num}</div><div class="ksub">${sub||""}</div></div></div>`;
 }
 
 function render(s) {
@@ -165,10 +180,12 @@ function render(s) {
   const app = $("#app"); app.innerHTML = "";
   const k = s.kpis;
   // KPI
+  const cachePct = k.tokens ? Math.round(k.cacheReadTokens/k.tokens*100) : 0;
+  const cacheSub = `${cachePct}<span data-tip="${escAttr(t('cacheTip'))}">${t('cacheRead')}</span>`;
   app.appendChild(el(`<div class="kpis">
-    ${kpiCard(t('cost'), fmtUSD(k.cost), (k.tokens?Math.round(k.cacheReadTokens/k.tokens*100):0)+t('cacheRead'), true)}
+    ${kpiCard(t('cost'), fmtUSD(k.cost), cacheSub, true, t('costTip'))}
     ${kpiCard(t('tokens'), fmtTok(k.tokens), "")}
-    ${kpiCard(t('activeDays'), k.activeDays+"", k.sessions+t('sessionsSuffix'))}
+    ${kpiCard(t('activeDays'), k.activeDays+"", k.sessions+t('sessionsSuffix'), false, t('activeDaysTip'))}
     ${kpiCard(t('tools'), (k.tools||[]).length+"", esc((k.tools||[]).join(" · ")))}
   </div>`));
   // cost over time + by model
@@ -193,7 +210,7 @@ function render(s) {
 function renderSessions(s) {
   const host = $("#sess");
   host.innerHTML = "";
-  host.appendChild(el(`<div class="eyebrow">${t('sessionAnalytics')} · <b style="color:var(--acc)">${t('signalNotExact')}</b> · ${t('selfCoaching')}</div>`));
+  host.appendChild(el(`<div class="eyebrow" data-tip="${escAttr(t('sessTip'))}">${t('sessionAnalytics')} · <b style="color:var(--acc)">${t('signalNotExact')}</b> · ${t('selfCoaching')}</div>`));
   const tools = s.sessionsByTool || [];
   if (!tools.length) { host.appendChild(el(`<div class="subtitle">${t('noSessionData')}</div>`)); return; }
   if (sessTool === null || !tools.find(tool => tool.tool === sessTool)) sessTool = tools[0].tool;
@@ -213,15 +230,15 @@ function renderSessions(s) {
     ? `<div style="margin-top:14px;font-size:11px;color:var(--dim);font-family:var(--mono)">${t('cursorNote')}</div>`
     : "";
   const flagged = (ss.flagged || []).map(f =>
-    `<div class="flag"><div>${esc(f.project)} · ${Math.round(f.durationMin)} ${t('min')}<div class="p-meta" style="color:var(--dim);font-family:var(--mono);font-size:10px">${f.iterations} ${t('iterations')} · ${fmtUSD(f.cost)}</div></div><span class="tag">${t('stuck')}</span></div>`
+    `<div class="flag"><div>${esc(f.project)} · ${Math.round(f.durationMin)} ${t('min')}<div class="p-meta" style="color:var(--dim);font-family:var(--mono);font-size:10px">${f.iterations} ${t('iterations')} · ${fmtUSD(f.cost)}</div></div><span class="tag" data-tip="${escAttr(t('stuckTip'))}">${t('stuck')}</span></div>`
   ).join("");
   host.appendChild(el(`<div class="grid2">
     <div class="shell"><div class="core"><div class="ctitle"><h3>${t('sessDurCost')}</h3><span class="meta">${t('orangeCandidates')}</span></div>${scatter(ss.scatter || [])}</div></div>
     <div class="shell"><div class="core"><div class="ctitle"><h3>${t('perSessionMedian')}</h3><span class="meta">${esc(cur.tool)}</span></div>
-      <div class="sess-stats"><div class="sess-stat"><div class="n">${Math.round(ss.medianDurationMin || 0)}<span style="font-size:12px;color:var(--dim)">${t('min')}</span></div><div class="l">${t('activeDuration')}</div><div class="h">p90 ${Math.round(ss.p90DurationMin || 0)}m</div></div>
-      <div class="sess-stat"><div class="n">${fmtTok(ss.medianTokens || 0)}</div><div class="l">${t('tokensLabel')}</div><div class="h">p90 ${fmtTok(ss.p90Tokens || 0)}</div></div></div>
-      <div class="sess-stats" style="margin-top:8px"><div class="sess-stat"><div class="n">${Math.round(ss.medianIterations || 0)}</div><div class="l">${t('modelCalls')}</div><div class="h">p90 ${Math.round(ss.p90Iterations || 0)}</div></div>
-      <div class="sess-stat"><div class="n">${fmtUSD(ss.medianCost || 0)}</div><div class="l">${t('costLabel')}</div><div class="h">p90 ${fmtUSD(ss.p90Cost || 0)}</div></div></div>
+      <div class="sess-stats"><div class="sess-stat" data-tip="${escAttr(t('statTip'))}"><div class="n">${Math.round(ss.medianDurationMin || 0)}<span style="font-size:12px;color:var(--dim)">${t('min')}</span></div><div class="l">${t('activeDuration')}</div><div class="h">p90 ${Math.round(ss.p90DurationMin || 0)}m</div></div>
+      <div class="sess-stat" data-tip="${escAttr(t('statTip'))}"><div class="n">${fmtTok(ss.medianTokens || 0)}</div><div class="l">${t('tokensLabel')}</div><div class="h">p90 ${fmtTok(ss.p90Tokens || 0)}</div></div></div>
+      <div class="sess-stats" style="margin-top:8px"><div class="sess-stat" data-tip="${escAttr(t('statTip'))}"><div class="n">${Math.round(ss.medianIterations || 0)}</div><div class="l">${t('modelCalls')}</div><div class="h">p90 ${Math.round(ss.p90Iterations || 0)}</div></div>
+      <div class="sess-stat" data-tip="${escAttr(t('statTip'))}"><div class="n">${fmtUSD(ss.medianCost || 0)}</div><div class="l">${t('costLabel')}</div><div class="h">p90 ${fmtUSD(ss.p90Cost || 0)}</div></div></div>
       ${note}
       <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px"><div style="font-size:11px;color:var(--muted);margin-bottom:8px">${t('needsAttention')}</div>${flagged || `<div class="subtitle">${t('noClearOutliers')}</div>`}</div>
     </div></div>
