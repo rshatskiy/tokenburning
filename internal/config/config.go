@@ -17,6 +17,7 @@ type PushCfg struct {
 	Enabled    bool     `json:"enabled"`
 	Categories []string `json:"categories"`
 	Endpoint   string   `json:"endpoint"`
+	Token      string   `json:"token"`
 }
 
 func (c Config) Interval() time.Duration {

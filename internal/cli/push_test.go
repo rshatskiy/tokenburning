@@ -15,6 +15,28 @@ import (
 	"github.com/rshatskiy/tokenburning/internal/store"
 )
 
+func TestPushSendsBearerToken(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".tokenburning"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var gotAuth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		w.WriteHeader(200)
+	}))
+	defer srv.Close()
+	root := NewRootCmd()
+	root.SetArgs([]string{"push", "--breadth", "--to", srv.URL, "--token", "secret-tok"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("push: %v", err)
+	}
+	if gotAuth != "Bearer secret-tok" {
+		t.Fatalf("Authorization = %q, want 'Bearer secret-tok'", gotAuth)
+	}
+}
+
 func TestPushDryRunRequiresCategory(t *testing.T) {
 	root := NewRootCmd()
 	root.SetArgs([]string{"push", "--dry-run"})

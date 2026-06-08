@@ -18,6 +18,7 @@ type Options struct {
 	PushEnabled    bool
 	PushCategories []string
 	PushEndpoint   string
+	PushToken      string
 	Period         string // период для push-агрегата (например "30d")
 	Log            func(string)
 }
@@ -58,7 +59,7 @@ func RunOnce(o Options) (collect.Result, error) {
 		p, err := aggregate.Build(db, o.PushCategories, period)
 		if err != nil {
 			o.log("push: ошибка сборки агрегата: " + err.Error())
-		} else if err := aggregate.Push(p, o.PushEndpoint); err != nil {
+		} else if err := aggregate.Push(p, o.PushEndpoint, o.PushToken); err != nil {
 			o.log("push: " + err.Error())
 		} else {
 			o.log(fmt.Sprintf("push: отправлено %v", o.PushCategories))
