@@ -1,5 +1,6 @@
 # Go
 /tokenburning
+/server
 *.exe
 *.test
 *.out
