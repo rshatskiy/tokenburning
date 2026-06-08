@@ -102,16 +102,19 @@ func nullStr(s string) any {
 	return s
 }
 
-// ModelSummary — агрегат стоимости по модели.
+// ModelSummary — агрегат стоимости и токенов по модели.
 type ModelSummary struct {
 	Model      string  `json:"model"`
 	Events     int64   `json:"events"`
+	Tokens     int64   `json:"tokens"`
 	CostAmount float64 `json:"cost"`
 }
 
 func (d *DB) SummaryByModel(since time.Time) ([]ModelSummary, error) {
-	rows, err := d.db.Query(`SELECT model, COUNT(*), COALESCE(SUM(cost_amount),0)
-        FROM events WHERE ts >= ? GROUP BY model ORDER BY 3 DESC`, since.Unix())
+	rows, err := d.db.Query(`SELECT model, COUNT(*),
+        COALESCE(SUM(MAX(tok_total, tok_input+tok_output+tok_cache_read+tok_cache_1h+tok_cache_5m+tok_reasoning)),0),
+        COALESCE(SUM(cost_amount),0)
+        FROM events WHERE ts >= ? GROUP BY model ORDER BY 4 DESC`, since.Unix())
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +122,7 @@ func (d *DB) SummaryByModel(since time.Time) ([]ModelSummary, error) {
 	var out []ModelSummary
 	for rows.Next() {
 		var m ModelSummary
-		if err := rows.Scan(&m.Model, &m.Events, &m.CostAmount); err != nil {
+		if err := rows.Scan(&m.Model, &m.Events, &m.Tokens, &m.CostAmount); err != nil {
 			return nil, err
 		}
 		out = append(out, m)

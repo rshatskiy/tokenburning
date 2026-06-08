@@ -123,13 +123,14 @@ function areaChart(data) {
   </svg>`;
 }
 
-function bars(items, label, val, max, tip) {
+function bars(items, label, val, max, tip, sub) {
   return items.map(it => {
     const v = val(it);
     const w = Math.max(2, (v/max)*100);
     const cls = v > 0 ? "bar-fill" : "bar-fill dim";
     const dt = tip ? ` data-tip="${escAttr(tip(it))}"` : "";
-    return `<div class="bar-row"${dt}><span class="bar-name">${esc(label(it))}</span><span class="bar-track"><span class="${cls}" style="width:${w}%"></span></span><span class="bar-val">${v>0?fmtUSD(v):"~est"}</span></div>`;
+    const sv = sub ? `<span class="bar-sub">${sub(it)}</span>` : "";
+    return `<div class="bar-row"${dt}><span class="bar-name">${esc(label(it))}</span><span class="bar-track"><span class="${cls}" style="width:${w}%"></span></span><span class="bar-val">${v>0?fmtUSD(v):"~est"}${sv}</span></div>`;
   }).join("");
 }
 
@@ -174,7 +175,7 @@ function render(s) {
   const maxModel = Math.max(...(s.byModel||[]).map(m=>m.cost),1);
   app.appendChild(el(`<div class="grid2">
     <div class="shell"><div class="core"><div class="ctitle"><h3>${t('costOverTime')}</h3><span class="meta">${t('usdPerDay')}</span></div>${areaChart(s.costOverTime||[])}</div></div>
-    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byModel')}</h3><span class="meta">${t('shareUsd')}</span></div>${bars(s.byModel||[], m=>m.model, m=>m.cost, maxModel, m=>`${esc(m.model)}<br><b>${m.cost>0?fmtUSD(m.cost):"~est"}</b> · ${m.events} ${t('events')}`)}</div></div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byModel')}</h3><span class="meta">${t('shareUsd')} · ${t('tokShort')}</span></div>${bars(s.byModel||[], m=>m.model, m=>m.cost, maxModel, m=>`${esc(m.model)}<br><b>${m.cost>0?fmtUSD(m.cost):"~est"}</b> · ${fmtTok(m.tokens)} ${t('tokShort')} · ${m.events} ${t('events')}`, m=>`${fmtTok(m.tokens)} ${t('tokShort')}`)}</div></div>
   </div>`));
   // by tool + top projects + activity
   const maxTool = Math.max(...(s.byTool||[]).map(tool=>tool.cost),1);
