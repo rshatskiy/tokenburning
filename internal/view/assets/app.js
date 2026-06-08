@@ -18,6 +18,10 @@ const I18N = {
     modelCalls: "model calls", needsAttention: "Needs attention", noClearOutliers: "no clear outliers",
     stuck: "stuck?", iter: "iter", iterations: "iterations", loadError: "Load error",
     tokensLabel: "tokens", costLabel: "cost",
+    share: "Share ↗", shareTitle: "Share your stats", dl: "Download", copyImg: "Copy image", copied: "Copied!", postX: "Post on X",
+    cardHeadline: "My AI coding spend", periodAll: "all time", periodPrefix: "last ", periodDays: " days",
+    trackYours: "track yours →", shareHint: "Download or copy the card, then attach it to your post.",
+    tweet: "I spent {cost} on AI coding tools ({period}) 🔥 tracked locally with tokenburning",
   },
   ru: {
     all: "всё", nodata: "нет данных", none: "(нет)", session: "сессия",
@@ -38,6 +42,10 @@ const I18N = {
     modelCalls: "обращений к модели", needsAttention: "Требуют внимания", noClearOutliers: "нет выраженных выбросов",
     stuck: "застревание?", iter: "итер", iterations: "итераций", loadError: "Ошибка загрузки",
     tokensLabel: "токенов", costLabel: "стоимость",
+    share: "Поделиться ↗", shareTitle: "Поделиться статистикой", dl: "Скачать", copyImg: "Копировать", copied: "Скопировано!", postX: "В X",
+    cardHeadline: "Мои траты на ИИ-код", periodAll: "всё время", periodPrefix: "последние ", periodDays: " дн.",
+    trackYours: "посчитай свои →", shareHint: "Скачайте или скопируйте карточку и приложите к посту.",
+    tweet: "Потратил {cost} на ИИ-инструменты для кода ({period}) 🔥 считаю локально через tokenburning",
   },
 };
 let lang = localStorage.getItem("tb_lang");
@@ -73,7 +81,7 @@ function renderLang() {
 }
 
 function rerender() {
-  renderLang(); renderPeriod();
+  renderLang(); renderPeriod(); wireShare();
   if (lastSummary) render(lastSummary);
 }
 
@@ -231,6 +239,57 @@ document.addEventListener("mousemove", (e) => {
   tip.style.top = Math.max(8, y) + "px";
 });
 
+// ---- Share card (client-side; only safe aggregates — no project paths/sessions) ----
+function periodLabel() {
+  return period === "all" ? t('periodAll') : t('periodPrefix') + period.replace('d','') + t('periodDays');
+}
+function rrect(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
+function drawShareCard(canvas) {
+  const W=1200,H=630,dpr=2,F="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif";
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  const c=canvas.getContext('2d'); c.scale(dpr,dpr);
+  const k=(lastSummary&&lastSummary.kpis)||{cost:0,tokens:0,activeDays:0,tools:[]};
+  c.fillStyle="#0a0a0c"; c.fillRect(0,0,W,H);
+  const g=c.createRadialGradient(W-150,70,30,W-150,70,640);
+  g.addColorStop(0,"rgba(251,146,60,.22)"); g.addColorStop(1,"rgba(251,146,60,0)");
+  c.fillStyle=g; c.fillRect(0,0,W,H);
+  const P=72;
+  const lg=c.createLinearGradient(P,P,P+46,P+46); lg.addColorStop(0,"#ea580c"); lg.addColorStop(1,"#fb923c");
+  c.fillStyle=lg; rrect(c,P,P,46,46,13); c.fill();
+  c.fillStyle="#1a0d04"; c.textBaseline="middle"; c.textAlign="center"; c.font="700 23px "+F; c.fillText("tb",P+23,P+24);
+  c.textAlign="left"; c.fillStyle="#fafafa"; c.font="600 25px "+F; c.fillText("tokenburning",P+60,P+24);
+  c.textBaseline="alphabetic";
+  c.fillStyle="#8a857d"; c.font="600 20px "+F; c.fillText((t('cardHeadline')+"  ·  "+periodLabel()).toUpperCase(), P, 252);
+  c.fillStyle="#fb923c"; c.font="800 124px "+F; c.fillText(fmtUSD(k.cost), P, 372);
+  c.fillStyle="#d6d3d1"; c.font="500 30px "+F;
+  c.fillText(fmtTok(k.tokens)+" "+t('tokensLabel')+"   ·   "+k.activeDays+" "+t('activeDays').toLowerCase(), P, 430);
+  let x=P; const ty=472; c.font="500 22px "+F; c.textBaseline="middle";
+  for (const tool of (k.tools||[])) {
+    const cw=c.measureText(tool).width+36;
+    c.fillStyle="rgba(255,255,255,.06)"; rrect(c,x,ty,cw,44,22); c.fill();
+    c.strokeStyle="rgba(255,255,255,.13)"; c.lineWidth=1; rrect(c,x+.5,ty+.5,cw-1,43,21.5); c.stroke();
+    c.fillStyle="#e7e5e4"; c.fillText(tool, x+18, ty+23);
+    x+=cw+12;
+  }
+  c.textBaseline="alphabetic";
+  c.fillStyle="#71717a"; c.font="500 22px "+F; c.fillText("tokenburning.online", P, H-P+6);
+  c.fillStyle="#fb923c"; c.textAlign="right"; c.fillText(t('trackYours'), W-P, H-P+6); c.textAlign="left";
+}
+function openShareModal() {
+  const bg=el(`<div class="modal-bg"></div>`);
+  const m=el(`<div class="modal"><button class="modal-close" aria-label="close">×</button><h3>${esc(t('shareTitle'))}</h3><canvas></canvas><div class="modal-actions"><button class="primary" data-a="dl">${esc(t('dl'))}</button><button data-a="copy">${esc(t('copyImg'))}</button><button data-a="x">${esc(t('postX'))}</button></div><div class="modal-hint">${esc(t('shareHint'))}</div></div>`);
+  bg.appendChild(m); document.body.appendChild(bg);
+  drawShareCard(m.querySelector('canvas'));
+  const canvas=m.querySelector('canvas');
+  const close=()=>bg.remove();
+  bg.addEventListener('click', e => { if (e.target===bg) close(); });
+  m.querySelector('.modal-close').onclick=close;
+  m.querySelector('[data-a=dl]').onclick=()=>canvas.toBlob(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download="tokenburning-stats.png"; document.body.appendChild(a); a.click(); a.remove(); });
+  m.querySelector('[data-a=copy]').onclick=ev=>{ const btn=ev.currentTarget; canvas.toBlob(async b=>{ try { await navigator.clipboard.write([new ClipboardItem({'image/png':b})]); const o=btn.textContent; btn.textContent=t('copied'); setTimeout(()=>btn.textContent=o,1600); } catch(_){} }); };
+  m.querySelector('[data-a=x]').onclick=()=>{ const k=(lastSummary&&lastSummary.kpis)||{cost:0}; const txt=t('tweet').replace('{cost}',fmtUSD(k.cost)).replace('{period}',periodLabel()); window.open("https://twitter.com/intent/tweet?text="+encodeURIComponent(txt)+"&url="+encodeURIComponent("https://tokenburning.online"),"_blank","noopener"); };
+}
+function wireShare(){ const b=$("#share"); if (b) { b.textContent=t('share'); b.onclick=openShareModal; } }
+
 async function load() {
   try {
     const r = await fetch(`/api/summary?period=${period}&t=${encodeURIComponent(token)}`);
@@ -242,4 +301,5 @@ async function load() {
 }
 renderLang();
 renderPeriod();
+wireShare();
 load();
