@@ -6,7 +6,13 @@ $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" 
 $tag = (Invoke-RestMethod "https://api.github.com/repos/$repo/releases/latest").tag_name
 $ver = if ($tag.StartsWith("v")) { $tag.Substring(1) } else { $tag }
 $fname = "tokenburning_${ver}_windows_${arch}.zip"
-$base = "https://github.com/$repo/releases/download/$tag"
+# Зеркало на своём домене (GitHub release-CDN нестабилен в РФ); GitHub — фолбэк.
+$mirror = "https://tokenburning.ru/dl/$tag"
+$ghbase = "https://github.com/$repo/releases/download/$tag"
+function Fetch($name, $out) {
+    try { Invoke-WebRequest -Uri "$mirror/$name" -OutFile $out -ErrorAction Stop }
+    catch { Invoke-WebRequest -Uri "$ghbase/$name" -OutFile $out }
+}
 
 $dest = Join-Path $env:LOCALAPPDATA "tokenburning"
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
@@ -15,8 +21,8 @@ $sums = Join-Path $env:TEMP "tokenburning_checksums.txt"
 
 Write-Host "tokenburning: downloading $fname ($tag)"
 try {
-    Invoke-WebRequest -Uri "$base/$fname" -OutFile $zip
-    Invoke-WebRequest -Uri "$base/checksums.txt" -OutFile $sums
+    Fetch $fname $zip
+    Fetch "checksums.txt" $sums
 
     # verify SHA-256 against checksums.txt before installing
     $want = (Select-String -Path $sums -Pattern ([regex]::Escape($fname)) | Select-Object -First 1).Line -split '\s+' | Select-Object -First 1

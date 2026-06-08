@@ -94,12 +94,11 @@ func DownloadAndApply(tag string) error {
 		ext = "zip"
 	}
 	fname := fmt.Sprintf("tokenburning_%s_%s_%s.%s", ver, runtime.GOOS, runtime.GOARCH, ext)
-	base := "https://github.com/" + repoSlug + "/releases/download/" + tag
-	archive, err := getBytes(base + "/" + fname)
+	archive, err := getAsset(tag, fname)
 	if err != nil {
 		return fmt.Errorf("скачивание %s: %w", fname, err)
 	}
-	sums, err := getBytes(base + "/checksums.txt")
+	sums, err := getAsset(tag, "checksums.txt")
 	if err != nil {
 		return fmt.Errorf("скачивание checksums.txt: %w", err)
 	}
@@ -134,6 +133,24 @@ func CheckAndApply(current string) (string, bool, error) {
 		return tag, false, err
 	}
 	return tag, true, nil
+}
+
+// getAsset качает релизный артефакт: сначала через зеркало на своём домене
+// (GitHub release-CDN нестабилен в РФ), затем — напрямую с GitHub.
+func getAsset(tag, fname string) ([]byte, error) {
+	bases := []string{
+		"https://tokenburning.ru/dl/" + tag,
+		"https://github.com/" + repoSlug + "/releases/download/" + tag,
+	}
+	var lastErr error
+	for _, base := range bases {
+		b, err := getBytes(base + "/" + fname)
+		if err == nil {
+			return b, nil
+		}
+		lastErr = err
+	}
+	return nil, lastErr
 }
 
 func getBytes(url string) ([]byte, error) {

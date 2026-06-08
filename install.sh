@@ -24,13 +24,18 @@ if [ -z "$tag" ]; then
 fi
 ver=${tag#v}
 fname="${BIN}_${ver}_${os}_${arch}.tar.gz"
-base="https://github.com/$REPO/releases/download/$tag"
+# Зеркало на своём домене (GitHub release-CDN нестабилен в РФ); GitHub — фолбэк.
+mirror="https://tokenburning.ru/dl/$tag"
+gh="https://github.com/$REPO/releases/download/$tag"
+fetch() { # $1=filename $2=outfile
+  curl -fsSL "$mirror/$1" -o "$2" 2>/dev/null || curl -fsSL "$gh/$1" -o "$2"
+}
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 echo "tokenburning: downloading $fname ($tag)"
-curl -fsSL "$base/$fname" -o "$tmp/$fname"
-curl -fsSL "$base/checksums.txt" -o "$tmp/checksums.txt"
+fetch "$fname" "$tmp/$fname"
+fetch "checksums.txt" "$tmp/checksums.txt"
 
 # verify SHA-256 against the signed checksums.txt before installing
 want=$(grep " ${fname}\$" "$tmp/checksums.txt" | awk '{print $1}')
