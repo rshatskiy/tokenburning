@@ -5,6 +5,9 @@
 *.test
 *.out
 /dist/
+# Secrets / local env (НИКОГДА не коммитить)
+.env
+deploy/.env
 # Local tokenburning data
 /.tokenburning/
 # OS
