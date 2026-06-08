@@ -139,6 +139,31 @@ func (d *DB) ActivityByDay(since time.Time) ([]DaySessions, error) {
 	return out, rows.Err()
 }
 
+// ModelCacheRead — суммарные cache-read токены по модели.
+type ModelCacheRead struct {
+	Model     string
+	CacheRead int64
+}
+
+// CacheReadByModel — сумма tok_cache_read по каждой модели начиная с since.
+func (d *DB) CacheReadByModel(since time.Time) ([]ModelCacheRead, error) {
+	rows, err := d.db.Query(`SELECT model, COALESCE(SUM(tok_cache_read),0)
+        FROM events WHERE ts >= ? GROUP BY model`, since.Unix())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ModelCacheRead
+	for rows.Next() {
+		var m ModelCacheRead
+		if err := rows.Scan(&m.Model, &m.CacheRead); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
 type SessionPoint struct {
 	Project     string  `json:"project"`
 	DurationMin float64 `json:"durationMin"`

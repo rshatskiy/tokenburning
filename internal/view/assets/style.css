@@ -470,3 +470,10 @@ header {
   white-space: normal; box-shadow: 0 12px 30px rgba(0, 0, 0, .5);
   backdrop-filter: blur(8px);
 }
+
+/* подписи значений на графике «Стоимость во времени» */
+.chartwrap { position: relative; }
+.cl-grid { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed rgba(255,255,255,.07); pointer-events: none; }
+.cl-ax { position: absolute; left: 0; font-family: var(--mono); font-size: 10px; color: var(--dim); font-variant-numeric: tabular-nums; pointer-events: none; background: linear-gradient(90deg, rgba(12,11,9,.85), rgba(12,11,9,0)); padding-right: 8px; }
+.cl-dot { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #fb923c; transform: translate(-50%,-50%); box-shadow: 0 0 7px rgba(251,146,60,.8); pointer-events: none; }
+.cl-peak { position: absolute; transform: translate(-50%,60%); font-family: var(--mono); font-size: 11px; color: #fbbf77; white-space: nowrap; font-variant-numeric: tabular-nums; pointer-events: none; text-shadow: 0 1px 3px rgba(0,0,0,.7); }

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/rshatskiy/tokenburning/internal/aggregate"
+	"github.com/rshatskiy/tokenburning/internal/pricing"
 	"github.com/rshatskiy/tokenburning/internal/store"
 )
 
@@ -32,6 +33,7 @@ type Summary struct {
 	TopProjects    []store.ProjectSummary `json:"topProjects"`
 	Activity       []store.DaySessions    `json:"activity"`
 	SessionsByTool []store.ToolSessions   `json:"sessionsByTool"`
+	CacheSavings   float64                `json:"cacheSavings"`
 }
 
 // BuildSummary собирает все агрегаты за период в один объект для фронта.
@@ -65,6 +67,14 @@ func BuildSummary(db *store.DB, period string) (Summary, error) {
 	}
 	if len(s.TopProjects) > 8 {
 		s.TopProjects = s.TopProjects[:8]
+	}
+	// Оценка экономии на кэше: cache-read токены против цены свежего input.
+	if cat, perr := pricing.LoadEmbedded(); perr == nil {
+		if crs, cerr := db.CacheReadByModel(since); cerr == nil {
+			for _, m := range crs {
+				s.CacheSavings += cat.CacheSavings(m.Model, m.CacheRead)
+			}
+		}
 	}
 	return s, nil
 }

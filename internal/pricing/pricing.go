@@ -51,3 +51,17 @@ func (c *Catalog) Cost(modelName string, tk model.Tokens) model.Cost {
 		float64(tk.Cache1h)/M*p.Cache1h
 	return model.Cost{Amount: amount, Currency: c.Currency, Basis: model.BasisActual, PricingVersion: c.Version}
 }
+
+// CacheSavings оценивает экономию на cache-read токенах модели против цены свежего input
+// (сколько стоили бы те же токены как обычный input). 0 для неизвестной модели.
+func (c *Catalog) CacheSavings(modelName string, cacheReadTokens int64) float64 {
+	p, ok := c.Models[modelName]
+	if !ok {
+		return 0
+	}
+	diff := p.Input - p.CacheRead
+	if diff <= 0 {
+		return 0
+	}
+	return float64(cacheReadTokens) / 1_000_000.0 * diff
+}
