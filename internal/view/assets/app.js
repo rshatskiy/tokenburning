@@ -20,7 +20,9 @@ const I18N = {
     tokensLabel: "tokens", costLabel: "cost",
     share: "Share ↗", shareTitle: "Share your stats", dl: "Download", copyImg: "Copy image", copied: "Copied!", postX: "Post on X",
     cardHeadline: "My AI coding spend", periodAll: "all time", periodPrefix: "last ", periodDays: " days",
-    trackYours: "track yours →", shareHint: "Download or copy the card, then attach it to your post.",
+    trackYours: "track yours →",
+    shareHint: "\"Copy\" puts the card on your clipboard — paste into a post (⌘/Ctrl+V). Or \"Download\" the PNG.",
+    pasteHint: "Copied ✓ Now paste it into your post (⌘/Ctrl+V).", savedInstead: "Saved PNG ↓",
     tweet: "I spent {cost} on AI coding tools ({period}) 🔥 tracked locally with tokenburning",
   },
   ru: {
@@ -44,7 +46,9 @@ const I18N = {
     tokensLabel: "токенов", costLabel: "стоимость",
     share: "Поделиться ↗", shareTitle: "Поделиться статистикой", dl: "Скачать", copyImg: "Копировать", copied: "Скопировано!", postX: "В X",
     cardHeadline: "Мои траты на ИИ-код", periodAll: "всё время", periodPrefix: "последние ", periodDays: " дн.",
-    trackYours: "посчитай свои →", shareHint: "Скачайте или скопируйте карточку и приложите к посту.",
+    trackYours: "посчитай свои →",
+    shareHint: "«Копировать» — карточка ляжет в буфер, вставьте в пост (⌘/Ctrl+V). Или «Скачать» — сохранит PNG.",
+    pasteHint: "Скопировано ✓ Вставьте в пост (⌘/Ctrl+V).", savedInstead: "Сохранил PNG ↓",
     tweet: "Потратил {cost} на ИИ-инструменты для кода ({period}) 🔥 считаю локально через tokenburning",
   },
 };
@@ -284,8 +288,21 @@ function openShareModal() {
   const close=()=>bg.remove();
   bg.addEventListener('click', e => { if (e.target===bg) close(); });
   m.querySelector('.modal-close').onclick=close;
-  m.querySelector('[data-a=dl]').onclick=()=>canvas.toBlob(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download="tokenburning-stats.png"; document.body.appendChild(a); a.click(); a.remove(); });
-  m.querySelector('[data-a=copy]').onclick=ev=>{ const btn=ev.currentTarget; canvas.toBlob(async b=>{ try { await navigator.clipboard.write([new ClipboardItem({'image/png':b})]); const o=btn.textContent; btn.textContent=t('copied'); setTimeout(()=>btn.textContent=o,1600); } catch(_){} }); };
+  const saveBlob=(b)=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download="tokenburning-stats.png"; document.body.appendChild(a); a.click(); a.remove(); };
+  const flash=(btn,txt)=>{ const o=btn.textContent; btn.textContent=txt; setTimeout(()=>{btn.textContent=o;},1800); };
+  m.querySelector('[data-a=dl]').onclick=()=>canvas.toBlob(saveBlob);
+  m.querySelector('[data-a=copy]').onclick=ev=>{ const btn=ev.currentTarget; canvas.toBlob(async b=>{
+    if(navigator.clipboard && window.ClipboardItem){
+      try {
+        await navigator.clipboard.write([new ClipboardItem({'image/png':b})]);
+        flash(btn,t('copied'));
+        const h=m.querySelector('.modal-hint'); if(h) h.textContent=t('pasteHint');
+        return;
+      } catch(_){}
+    }
+    // браузер не разрешает копировать картинку → скачиваем как запасной путь
+    saveBlob(b); flash(btn,t('savedInstead'));
+  }); };
   m.querySelector('[data-a=x]').onclick=()=>{ const k=(lastSummary&&lastSummary.kpis)||{cost:0}; const txt=t('tweet').replace('{cost}',fmtUSD(k.cost)).replace('{period}',periodLabel()); window.open("https://twitter.com/intent/tweet?text="+encodeURIComponent(txt)+"&url="+encodeURIComponent("https://tokenburning.online"),"_blank","noopener"); };
 }
 function wireShare(){ const b=$("#share"); if (b) { b.textContent=t('share'); b.onclick=openShareModal; } }
