@@ -18,3 +18,5 @@ deploy/.env
 
 # Brainstorm visual companion
 .superpowers/
+# AI-тулинг (не для публичного репо)
+skills-lock.json
