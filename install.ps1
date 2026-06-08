@@ -38,8 +38,28 @@ try {
     if (Test-Path $sums) { Remove-Item $sums }
 }
 
-Write-Host "tokenburning: installed to $dest\tokenburning.exe ($tag, checksum verified)"
-Write-Host "tokenburning: add to PATH:  setx PATH `"$dest;$env:PATH`""
+$exe = Join-Path $dest "tokenburning.exe"
+Write-Host "tokenburning: installed to $exe ($tag, checksum verified)"
+
+# Добавляем в ПОЛЬЗОВАТЕЛЬСКИЙ PATH (не весь раскрытый $env:PATH — иначе setx режет на 1024
+# символах) и сразу обновляем текущую сессию (через iex скрипт исполняется в ней).
+$userPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+if (-not $userPath) { $userPath = "" }
+if ($userPath -notlike "*$dest*") {
+    [Environment]::SetEnvironmentVariable("PATH", ($userPath.TrimEnd(';') + ";" + $dest), "User")
+}
+if ($env:PATH -notlike "*$dest*") { $env:PATH = "$env:PATH;$dest" }
+
 Write-Host ""
-Write-Host "Installed. Run:"
-Write-Host "    tokenburning scan"
+Write-Host "Installed (v$ver)."
+Write-Host ""
+Write-Host "See your AI spend (local, nothing leaves your machine):"
+Write-Host "    tokenburning dashboard     # visual dashboard in your browser"
+Write-Host "    tokenburning scan          # quick numbers in the terminal"
+Write-Host ""
+Write-Host "Send your stats to a team dashboard (optional):"
+Write-Host "    1) open  https://tokenburning.ru/install   ->  click 'Generate token'"
+Write-Host "    2) run:  tokenburning connect --to https://tokenburning.ru --token <YOUR-TOKEN> --breadth"
+Write-Host ""
+Write-Host "Opening your dashboard..."
+Start-Process -FilePath $exe -ArgumentList "dashboard"

@@ -63,10 +63,26 @@ mkdir -p "$dest"
 install -m 0755 "$tmp/$BIN" "$dest/$BIN"
 
 echo "tokenburning: installed to $dest/$BIN ($tag, checksum verified)"
-case ":$PATH:" in
-  *":$dest:"*) ;;
-  *) echo "tokenburning: add it to your PATH:  export PATH=\"$dest:\$PATH\"" ;;
-esac
+inpath=0
+case ":$PATH:" in *":$dest:"*) inpath=1 ;; esac
 echo ""
-echo "Installed. Run:"
-echo "    $BIN scan"
+echo "Installed ($tag)."
+echo ""
+echo "See your AI spend (local, nothing leaves your machine):"
+echo "    tokenburning dashboard     # visual dashboard in your browser"
+echo "    tokenburning scan          # quick numbers in the terminal"
+echo ""
+echo "Send your stats to a team dashboard (optional):"
+echo "    1) open  https://tokenburning.ru/install   and click \"Generate token\""
+echo "    2) run:  tokenburning connect --to https://tokenburning.ru --token <YOUR-TOKEN> --breadth"
+if [ "$inpath" -eq 0 ]; then
+  echo ""
+  echo "Note: add it to your PATH for the 'tokenburning' command:"
+  echo "    export PATH=\"$dest:\$PATH\""
+fi
+# Авто-открытие дашборда, если установка идёт в интерактивном терминале
+if [ -t 1 ] && [ -z "$TOKENBURNING_NO_LAUNCH" ]; then
+  echo ""
+  echo "Opening your dashboard…"
+  ( nohup "$dest/$BIN" dashboard >/dev/null 2>&1 & ) 2>/dev/null || true
+fi
