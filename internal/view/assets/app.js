@@ -376,18 +376,23 @@ function openShareModal() {
   const saveBlob=(b)=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download="tokenburning-stats.png"; document.body.appendChild(a); a.click(); a.remove(); };
   const flash=(btn,txt)=>{ const o=btn.textContent; btn.textContent=txt; setTimeout(()=>{btn.textContent=o;},1800); };
   m.querySelector('[data-a=dl]').onclick=()=>canvas.toBlob(saveBlob);
-  m.querySelector('[data-a=copy]').onclick=ev=>{ const btn=ev.currentTarget; canvas.toBlob(async b=>{
+  m.querySelector('[data-a=copy]').onclick=ev=>{
+    const btn=ev.currentTarget;
+    const blobP=new Promise(res=>canvas.toBlob(res,'image/png'));
+    // ВАЖНО: clipboard.write вызываем синхронно в обработчике клика, передавая Promise
+    // картинки в ClipboardItem — иначе Safari теряет «жест пользователя» и отказывает.
     if(navigator.clipboard && window.ClipboardItem){
       try {
-        await navigator.clipboard.write([new ClipboardItem({'image/png':b})]);
-        flash(btn,t('copied'));
-        const h=m.querySelector('.modal-hint'); if(h) h.textContent=t('pasteHint');
+        navigator.clipboard.write([new ClipboardItem({'image/png':blobP})]).then(()=>{
+          flash(btn,t('copied'));
+          const h=m.querySelector('.modal-hint'); if(h) h.textContent=t('pasteHint');
+        }).catch(()=>{ blobP.then(saveBlob); flash(btn,t('savedInstead')); });
         return;
       } catch(_){}
     }
-    // браузер не разрешает копировать картинку → скачиваем как запасной путь
-    saveBlob(b); flash(btn,t('savedInstead'));
-  }); };
+    // браузер вовсе не умеет копировать картинку → скачиваем как запасной путь
+    blobP.then(saveBlob); flash(btn,t('savedInstead'));
+  };
   m.querySelector('[data-a=x]').onclick=()=>{ const k=(lastSummary&&lastSummary.kpis)||{cost:0}; const txt=t('tweet').replace('{cost}',fmtUSD(k.cost)).replace('{period}',periodLabel()); window.open("https://twitter.com/intent/tweet?text="+encodeURIComponent(txt)+"&url="+encodeURIComponent("https://tokenburning.online"),"_blank","noopener"); };
 }
 function wireShare(){ const b=$("#share"); if (b) { b.textContent=t('share'); b.onclick=openShareModal; } }
