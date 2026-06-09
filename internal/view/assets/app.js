@@ -145,10 +145,14 @@ function areaChart(data) {
   let pk = 0; for (let i = 1; i < data.length; i++) if (data[i].cost > data[pk].cost) pk = i;
   const peakV = data[pk].cost, peakL = Math.max(7, Math.min(93, xAt(pk)/W*100)), peakT = y(peakV);
   const midT = y(max/2);
+  // точка на каждый день (бусины) — чтобы было видно, где именно замеры
+  const dotR = data.length > 45 ? "cl-pt sm" : "cl-pt";
+  const dots = data.length < 2 ? "" : data.map((d,i)=>`<div class="${dotR}" style="left:${(xAt(i)/W*100).toFixed(2)}%;top:${y(d.cost).toFixed(0)}px"></div>`).join("");
   const labels = `
     <div class="cl-grid" style="top:${y(max).toFixed(0)}px"></div>
     <div class="cl-grid" style="top:${midT.toFixed(0)}px"></div>
     <div class="cl-ax" style="top:${(midT-13).toFixed(0)}px">${fmtUSD(max/2)}</div>
+    ${dots}
     ${peakV>0?`<div class="cl-dot" style="left:${peakL.toFixed(1)}%;top:${peakT.toFixed(0)}px"></div><div class="cl-peak" style="left:${peakL.toFixed(1)}%;top:${peakT.toFixed(0)}px">${fmtUSD(peakV)}</div>`:""}`;
   return `<div class="chartwrap" style="height:${H}px">
   <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none" style="display:block">
