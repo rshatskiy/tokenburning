@@ -2,8 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"net/url"
 	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -12,6 +12,23 @@ import (
 	"github.com/rshatskiy/tokenburning/internal/platform"
 	"github.com/rshatskiy/tokenburning/internal/store"
 )
+
+// requireHTTPS: токен ходит в заголовке — по открытому http его перехватит любой
+// узел по пути. http разрешён только для localhost (локальная разработка).
+func requireHTTPS(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("некорректный URL %q: %w", raw, err)
+	}
+	if u.Scheme == "https" {
+		return nil
+	}
+	h := u.Hostname()
+	if u.Scheme == "http" && (h == "localhost" || h == "127.0.0.1" || h == "::1") {
+		return nil
+	}
+	return fmt.Errorf("сервер должен быть https:// (получено %q): токен по открытому http перехватывается", raw)
+}
 
 func newConnectCmd() *cobra.Command {
 	var to, token, period string
@@ -22,6 +39,9 @@ func newConnectCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if to == "" || token == "" {
 				return fmt.Errorf("нужны --to <url> и --token <T> (выдаются на /install сервера)")
+			}
+			if err := requireHTTPS(to); err != nil {
+				return err
 			}
 			var cats []string
 			if breadth {
@@ -43,11 +63,11 @@ func newConnectCmd() *cobra.Command {
 				return err
 			}
 			// 2. мгновенный пробный push (валидирует токен + шлёт первый агрегат)
-			home, err := os.UserHomeDir()
+			dbPath, err := store.DefaultPath()
 			if err != nil {
 				return err
 			}
-			db, err := store.Open(filepath.Join(home, ".tokenburning", "tokenburning.db"))
+			db, err := store.Open(dbPath)
 			if err != nil {
 				return err
 			}

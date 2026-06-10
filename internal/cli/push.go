@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -34,11 +33,11 @@ func newPushCmd() *cobra.Command {
 			default:
 				return fmt.Errorf("неизвестный период %q (допустимо: 7d, 30d, 90d, all)", period)
 			}
-			home, err := os.UserHomeDir()
+			dbPath, err := store.DefaultPath()
 			if err != nil {
 				return err
 			}
-			db, err := store.Open(filepath.Join(home, ".tokenburning", "tokenburning.db"))
+			db, err := store.Open(dbPath)
 			if err != nil {
 				return err
 			}
@@ -61,6 +60,9 @@ func newPushCmd() *cobra.Command {
 			}
 			if to == "" {
 				return fmt.Errorf("сервер не задан: --to <url> или TOKENBURNING_SERVER (приёмник — отдельный спек; пока используйте --dry-run)")
+			}
+			if err := requireHTTPS(to); err != nil {
+				return err
 			}
 			if token == "" {
 				token = os.Getenv("TOKENBURNING_TOKEN")

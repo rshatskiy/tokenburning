@@ -15,7 +15,12 @@ import (
 type Result struct {
 	Collected   int
 	Quarantined int
+	// SampleErrors — первые несколько ошибок карантина: без них сломавшийся
+	// формат логов виден только как молча растущий счётчик.
+	SampleErrors []string
 }
+
+const maxSampleErrors = 5
 
 // Adapters возвращает реестр всех адаптеров.
 func Adapters() []adapter.Adapter {
@@ -33,7 +38,12 @@ func Run(db *store.DB, cat *pricing.Catalog, paths platform.Paths, progress Prog
 		e.Cost = cat.Cost(e.Model, e.Tokens)
 		batch = append(batch, e)
 	}
-	quar := func(raw []byte, err error) { res.Quarantined++ }
+	quar := func(raw []byte, err error) {
+		res.Quarantined++
+		if err != nil && len(res.SampleErrors) < maxSampleErrors {
+			res.SampleErrors = append(res.SampleErrors, err.Error())
+		}
+	}
 
 	for _, ad := range Adapters() {
 		srcs, derr := ad.Discover(paths)

@@ -48,6 +48,19 @@ func TestConnectSavesConfigAndPushes(t *testing.T) {
 	}
 }
 
+func TestRequireHTTPS(t *testing.T) {
+	for _, ok := range []string{"https://tokenburning.ru", "http://localhost:8080", "http://127.0.0.1:9999"} {
+		if err := requireHTTPS(ok); err != nil {
+			t.Errorf("requireHTTPS(%q) = %v, ожидалось nil", ok, err)
+		}
+	}
+	for _, bad := range []string{"http://tokenburning.ru", "http://192.168.1.10:8080", "ftp://x"} {
+		if err := requireHTTPS(bad); err == nil {
+			t.Errorf("requireHTTPS(%q) = nil, ожидалась ошибка", bad)
+		}
+	}
+}
+
 func TestConnectRequiresToAndToken(t *testing.T) {
 	root := NewRootCmd()
 	root.SetArgs([]string{"connect", "--breadth"})
