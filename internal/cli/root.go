@@ -1,6 +1,10 @@
 package cli
 
-import "github.com/spf13/cobra"
+import (
+	"os"
+
+	"github.com/spf13/cobra"
+)
 
 var version = "dev"
 
@@ -10,6 +14,10 @@ func NewRootCmd() *cobra.Command {
 		Use:   "tokenburning",
 		Short: "Единый локальный вид по всем твоим ИИ-инструментам",
 	}
+	// Без явного SetOut cobra шлёт cmd.Print* в stderr (fallback) —
+	// `tokenburning scan > file` давал бы пустой файл.
+	root.SetOut(os.Stdout)
+	root.SetErr(os.Stderr)
 	root.AddCommand(newScanCmd())
 	root.AddCommand(newDashboardCmd())
 	root.AddCommand(newVersionCmd())

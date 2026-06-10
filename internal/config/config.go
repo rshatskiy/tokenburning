@@ -67,5 +67,10 @@ func Save(c Config) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(p, b, 0o600)
+	// temp + rename: убитый посреди записи процесс не оставит полу-записанный конфиг
+	tmp := p + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, p)
 }
