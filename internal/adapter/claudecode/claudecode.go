@@ -74,18 +74,32 @@ type rawMessage struct {
 	} `json:"usage"`
 }
 
-func (a *Adapter) Collect(src adapter.Source, _ adapter.Cursor, emit adapter.EmitFunc, quarantine adapter.QuarantineFunc) (adapter.Cursor, error) {
+func (a *Adapter) Collect(src adapter.Source, cursor adapter.Cursor, emit adapter.EmitFunc, quarantine adapter.QuarantineFunc) (adapter.Cursor, error) {
 	f, err := os.Open(src.Path)
 	if err != nil {
 		return adapter.Cursor{}, err
 	}
 	defer f.Close()
 
+	// Инкрементальность: JSONL append-only, продолжаем с сохранённого offset.
+	// Валидность курсора (тот же файл, не ротирован) проверяет вызывающий.
+	offset := cursor.Offset
+	if offset > 0 {
+		if _, err := f.Seek(offset, io.SeekStart); err != nil {
+			offset = 0 // не смогли — перечитываем целиком (идемпотентно по event_id)
+		}
+	}
+
 	// bufio.Reader.ReadBytes обрабатывает строки любой длины (в отличие от
 	// Scanner, который аборти́т весь файл на строке больше буфера, §15).
 	r := bufio.NewReader(f)
 	for {
 		line, readErr := r.ReadBytes('\n')
+		if readErr == nil {
+			// offset двигаем только по завершённым '\n' строкам: недописанный
+			// хвост перечитается следующим проходом уже целиком.
+			offset += int64(len(line))
+		}
 		if len(bytes.TrimRight(line, "\r\n")) > 0 {
 			a.processLine(line, emit, quarantine)
 		}
@@ -96,7 +110,7 @@ func (a *Adapter) Collect(src adapter.Source, _ adapter.Cursor, emit adapter.Emi
 			return adapter.Cursor{}, readErr
 		}
 	}
-	return adapter.Cursor{}, nil
+	return adapter.Cursor{Offset: offset}, nil
 }
 
 // processLine разбирает одну строку JSONL. Любая проблема ведёт в карантин,

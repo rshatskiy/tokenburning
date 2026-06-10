@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rshatskiy/tokenburning/internal/model"
+	"github.com/rshatskiy/tokenburning/internal/platform"
 )
 
 func sampleEvent(id string) model.Event {
@@ -77,6 +78,66 @@ func TestInsertIsIdempotent(t *testing.T) {
 	}
 	if rows[0].Events != 2 {
 		t.Fatalf("Events = %d, ожидалось 2 после добавления другого event_id", rows[0].Events)
+	}
+}
+
+// Точность для «растущих» событий (codex агрегирует сессию в одно событие со
+// стабильным id): повторная вставка того же event_id с новыми числами обязана
+// обновить строку, а не молча оставить устаревшую (как делал INSERT OR IGNORE).
+func TestInsertUpsertsGrownEvent(t *testing.T) {
+	db, err := Open(filepath.Join(t.TempDir(), "tokenburning.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer db.Close()
+
+	e := sampleEvent("sess_grow")
+	e.Tokens = model.Tokens{Input: 10, Output: 5}
+	e.Cost.Amount = 1.0
+	if err := db.Insert([]model.Event{e}); err != nil {
+		t.Fatalf("Insert #1: %v", err)
+	}
+	e.Tokens = model.Tokens{Input: 100, Output: 50}
+	e.Cost.Amount = 2.5
+	if err := db.Insert([]model.Event{e}); err != nil {
+		t.Fatalf("Insert #2: %v", err)
+	}
+	rows, err := db.SummaryByModel(time.Time{})
+	if err != nil {
+		t.Fatalf("SummaryByModel: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Events != 1 {
+		t.Fatalf("ожидалась 1 строка/1 событие, получено %+v", rows)
+	}
+	if rows[0].Tokens != 150 {
+		t.Fatalf("Tokens = %d, ожидалось 150 (событие не обновилось)", rows[0].Tokens)
+	}
+	if rows[0].CostAmount != 2.5 {
+		t.Fatalf("CostAmount = %f, ожидалось 2.5", rows[0].CostAmount)
+	}
+}
+
+func TestSourceCursorsRoundTrip(t *testing.T) {
+	db, err := Open(filepath.Join(t.TempDir(), "tokenburning.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer db.Close()
+	c := SourceCursor{Path: "/x/a.jsonl", FileID: platform.FileID{A: 1, B: 2}, Size: 100, MTime: 1700000000, Offset: 80, HeaderHash: "h1"}
+	if err := db.SaveSourceCursors([]SourceCursor{c}); err != nil {
+		t.Fatalf("SaveSourceCursors: %v", err)
+	}
+	// повторное сохранение того же пути — апдейт, не дубль
+	c.Size, c.Offset = 200, 180
+	if err := db.SaveSourceCursors([]SourceCursor{c}); err != nil {
+		t.Fatalf("SaveSourceCursors #2: %v", err)
+	}
+	got, err := db.SourceCursors()
+	if err != nil {
+		t.Fatalf("SourceCursors: %v", err)
+	}
+	if len(got) != 1 || got["/x/a.jsonl"] != c {
+		t.Fatalf("курсор не совпал: %+v", got)
 	}
 }
 

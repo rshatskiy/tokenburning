@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rshatskiy/tokenburning/internal/model"
+	"github.com/rshatskiy/tokenburning/internal/platform"
 	_ "modernc.org/sqlite"
 )
 
@@ -70,6 +71,15 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS idx_events_model ON events(model);
 CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);
+CREATE TABLE IF NOT EXISTS source_cursors (
+    path        TEXT PRIMARY KEY,
+    fid_a       INTEGER NOT NULL DEFAULT 0,
+    fid_b       INTEGER NOT NULL DEFAULT 0,
+    size        INTEGER NOT NULL DEFAULT 0,
+    mtime       INTEGER NOT NULL DEFAULT 0, -- UnixNano: секундной точности мало для детекта перезаписи
+    offset      INTEGER NOT NULL DEFAULT 0,
+    header_hash TEXT NOT NULL DEFAULT ''    -- sha256 первых ≤4КБ: детект перезаписи при том же inode
+);
 `); err != nil {
 		return err
 	}
@@ -82,7 +92,11 @@ CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);
 	return nil
 }
 
-// Insert записывает события идемпотентно (INSERT OR IGNORE по event_id) одной транзакцией.
+// Insert записывает события идемпотентно одной транзакцией. По конфликту event_id —
+// UPDATE, а не IGNORE: codex агрегирует живую сессию в одно «растущее» событие со
+// стабильным id, и IGNORE навсегда замораживал бы числа первого скана. WHERE
+// ограничивает запись реально изменившимися строками (повторный скан без изменений
+// не генерирует write-трафик).
 func (d *DB) Insert(events []model.Event) error {
 	if len(events) == 0 {
 		return nil
@@ -92,10 +106,22 @@ func (d *DB) Insert(events []model.Event) error {
 		return err
 	}
 	defer tx.Rollback()
-	stmt, err := tx.Prepare(`INSERT OR IGNORE INTO events
+	stmt, err := tx.Prepare(`INSERT INTO events
         (event_id,tool,ts,model,billing_mode,cost_amount,cost_currency,cost_basis,pricing_version,
          tok_input,tok_output,tok_cache_read,tok_cache_1h,tok_cache_5m,tok_reasoning,tok_total,session_id,project_key,extra_raw)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ON CONFLICT(event_id) DO UPDATE SET
+          tool=excluded.tool, ts=excluded.ts, model=excluded.model, billing_mode=excluded.billing_mode,
+          cost_amount=excluded.cost_amount, cost_currency=excluded.cost_currency, cost_basis=excluded.cost_basis,
+          pricing_version=excluded.pricing_version,
+          tok_input=excluded.tok_input, tok_output=excluded.tok_output, tok_cache_read=excluded.tok_cache_read,
+          tok_cache_1h=excluded.tok_cache_1h, tok_cache_5m=excluded.tok_cache_5m,
+          tok_reasoning=excluded.tok_reasoning, tok_total=excluded.tok_total,
+          session_id=excluded.session_id, project_key=excluded.project_key, extra_raw=excluded.extra_raw
+        WHERE excluded.tok_total<>events.tok_total OR excluded.tok_input<>events.tok_input
+           OR excluded.tok_output<>events.tok_output OR excluded.tok_cache_read<>events.tok_cache_read
+           OR excluded.tok_reasoning<>events.tok_reasoning OR excluded.cost_amount<>events.cost_amount
+           OR excluded.model<>events.model`)
 	if err != nil {
 		return err
 	}
@@ -105,6 +131,64 @@ func (d *DB) Insert(events []model.Event) error {
 			e.Cost.Amount, e.Cost.Currency, string(e.Cost.Basis), e.Cost.PricingVersion,
 			e.Tokens.Input, e.Tokens.Output, e.Tokens.CacheRead, e.Tokens.Cache1h, e.Tokens.Cache5m, e.Tokens.Reasoning, e.Tokens.Total,
 			nullStr(e.SessionID), nullStr(e.ProjectKey), e.ExtraRaw); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// SourceCursor — сохранённое состояние инкрементального чтения одного источника.
+// FileID детектирует ротацию/подмену файла, Size+MTime — «ничего не изменилось»,
+// Offset — позиция дочитанного хвоста (для append-only источников).
+type SourceCursor struct {
+	Path       string
+	FileID     platform.FileID
+	Size       int64
+	MTime      int64 // UnixNano
+	Offset     int64
+	HeaderHash string // sha256 первых min(Size, 4096) байт
+}
+
+// SourceCursors возвращает все сохранённые курсоры по пути источника.
+func (d *DB) SourceCursors() (map[string]SourceCursor, error) {
+	rows, err := d.db.Query(`SELECT path, fid_a, fid_b, size, mtime, offset, header_hash FROM source_cursors`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]SourceCursor{}
+	for rows.Next() {
+		var c SourceCursor
+		var a, b int64 // uint64 хранится как int64-битпаттерн (database/sql не умеет uint64 со старшим битом)
+		if err := rows.Scan(&c.Path, &a, &b, &c.Size, &c.MTime, &c.Offset, &c.HeaderHash); err != nil {
+			return nil, err
+		}
+		c.FileID.A, c.FileID.B = uint64(a), uint64(b)
+		out[c.Path] = c
+	}
+	return out, rows.Err()
+}
+
+// SaveSourceCursors сохраняет курсоры (upsert по path) одной транзакцией.
+func (d *DB) SaveSourceCursors(cs []SourceCursor) error {
+	if len(cs) == 0 {
+		return nil
+	}
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	stmt, err := tx.Prepare(`INSERT INTO source_cursors (path, fid_a, fid_b, size, mtime, offset, header_hash)
+        VALUES (?,?,?,?,?,?,?)
+        ON CONFLICT(path) DO UPDATE SET fid_a=excluded.fid_a, fid_b=excluded.fid_b,
+          size=excluded.size, mtime=excluded.mtime, offset=excluded.offset, header_hash=excluded.header_hash`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for _, c := range cs {
+		if _, err := stmt.Exec(c.Path, int64(c.FileID.A), int64(c.FileID.B), c.Size, c.MTime, c.Offset, c.HeaderHash); err != nil {
 			return err
 		}
 	}
