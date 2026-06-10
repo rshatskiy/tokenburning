@@ -17,6 +17,30 @@ func sampleEvent(id string) model.Event {
 	}
 }
 
+// Регрессия first-run: ~/.tokenburning ещё не существует — Open обязан создать
+// родительский каталог сам, а не падать с SQLITE_CANTOPEN(14) (как dashboard на свежей машине).
+func TestOpenCreatesParentDir(t *testing.T) {
+	p := filepath.Join(t.TempDir(), ".tokenburning", "tokenburning.db")
+	db, err := Open(p)
+	if err != nil {
+		t.Fatalf("Open с отсутствующим родительским каталогом: %v", err)
+	}
+	defer db.Close()
+	if err := db.Insert([]model.Event{sampleEvent("first")}); err != nil {
+		t.Fatalf("Insert: %v", err)
+	}
+}
+
+func TestDefaultPath(t *testing.T) {
+	p, err := DefaultPath()
+	if err != nil {
+		t.Fatalf("DefaultPath: %v", err)
+	}
+	if filepath.Base(p) != "tokenburning.db" || filepath.Base(filepath.Dir(p)) != ".tokenburning" {
+		t.Fatalf("неожиданный путь: %s", p)
+	}
+}
+
 func TestInsertIsIdempotent(t *testing.T) {
 	db, err := Open(filepath.Join(t.TempDir(), "tokenburning.db"))
 	if err != nil {

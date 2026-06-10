@@ -2,6 +2,8 @@ package store
 
 import (
 	"database/sql"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -11,8 +13,22 @@ import (
 
 type DB struct{ db *sql.DB }
 
+// DefaultPath — стандартный путь к локальной БД: ~/.tokenburning/tokenburning.db.
+func DefaultPath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".tokenburning", "tokenburning.db"), nil
+}
+
 // Open открывает/создаёт БД с включённым WAL и busy_timeout, прогоняет миграции.
+// Родительский каталог создаётся здесь: на свежей машине его ещё нет, и без этого
+// любая команда падала бы с SQLITE_CANTOPEN(14).
 func Open(path string) (*DB, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return nil, err
+	}
 	dsn := "file:" + path + "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
 	sqlDB, err := sql.Open("sqlite", dsn)
 	if err != nil {

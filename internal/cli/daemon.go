@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 
 	"github.com/rshatskiy/tokenburning/internal/config"
 	"github.com/rshatskiy/tokenburning/internal/daemon"
+	"github.com/rshatskiy/tokenburning/internal/store"
 )
 
 func newDaemonCmd() *cobra.Command {
@@ -20,7 +20,7 @@ func newDaemonCmd() *cobra.Command {
 		Use:   "daemon",
 		Short: "Фоновый периодический сбор (обычно запускается автозапуском)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			home, err := os.UserHomeDir()
+			dbPath, err := store.DefaultPath()
 			if err != nil {
 				return err
 			}
@@ -36,7 +36,7 @@ func newDaemonCmd() *cobra.Command {
 			defer cancel()
 			cmd.Printf("tokenburning daemon: интервал %s\n", iv)
 			return daemon.Run(ctx, daemon.Options{
-				DBPath:         filepath.Join(home, ".tokenburning", "tokenburning.db"),
+				DBPath:         dbPath,
 				Interval:       iv,
 				PushEnabled:    cfg.Push.Enabled,
 				PushCategories: cfg.Push.Categories,

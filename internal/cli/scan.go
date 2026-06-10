@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -20,12 +19,8 @@ func newScanCmd() *cobra.Command {
 		Use:   "scan",
 		Short: "Разобрать локальные логи и показать стоимость",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			home, err := os.UserHomeDir()
+			dbPath, err := store.DefaultPath()
 			if err != nil {
-				return err
-			}
-			dbPath := filepath.Join(home, ".tokenburning", "tokenburning.db")
-			if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
 				return err
 			}
 			out, err := runScan(dbPath)
@@ -84,6 +79,9 @@ func runScan(dbPath string) (string, error) {
 	}
 	if quarantined > 0 {
 		fmt.Fprintf(&b, "\nв карантине записей: %d\n", quarantined)
+		for _, e := range res.SampleErrors {
+			fmt.Fprintf(&b, "  пример: %s\n", e)
+		}
 	}
 	return b.String(), nil
 }

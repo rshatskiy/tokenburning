@@ -1,6 +1,8 @@
 const I18N = {
   en: {
     all: "all", nodata: "no data", none: "(none)", session: "session",
+    emptyTitle: "No data yet",
+    emptyBody: "No logs from Claude Code, Codex or Cursor were found on this machine. Use your AI tools, then refresh this page — or run <code>tokenburning scan</code> in a terminal.",
     cost: "Cost", cacheRead: "% cache read", tokens: "Tokens", activeDays: "Active days",
     sessionsSuffix: " sessions", tools: "Tools",
     costOverTime: "Cost over time", usdPerDay: "USD / day",
@@ -39,6 +41,8 @@ const I18N = {
   },
   ru: {
     all: "всё", nodata: "нет данных", none: "(нет)", session: "сессия",
+    emptyTitle: "Данных пока нет",
+    emptyBody: "Логи Claude Code, Codex или Cursor на этой машине не найдены. Поработайте с ИИ-инструментами и обновите страницу — или выполните <code>tokenburning scan</code> в терминале.",
     cost: "Стоимость", cacheRead: "% кэш-чтения", tokens: "Токены", activeDays: "Активных дней",
     sessionsSuffix: " сессий", tools: "Инструменты",
     costOverTime: "Стоимость во времени", usdPerDay: "USD / день",
@@ -208,6 +212,14 @@ function render(s) {
   renderPeriod();
   const app = $("#app"); app.innerHTML = "";
   const k = s.kpis;
+  // Пустая БД (first-run): вместо нулей объясняем, откуда возьмутся данные.
+  if (!k.tokens && !k.sessions && !(s.byTool||[]).length) {
+    app.appendChild(el(`<div class="shell"><div class="core" style="text-align:center;padding:48px 24px">
+      <h3 style="margin:0 0 10px">${t('emptyTitle')}</h3>
+      <div style="color:var(--dim);max-width:520px;margin:0 auto;line-height:1.5">${t('emptyBody')}</div>
+    </div></div>`));
+    return;
+  }
   // KPI
   const cachePct = k.tokens ? Math.round(k.cacheReadTokens/k.tokens*100) : 0;
   const saved = s.cacheSavings || 0;
