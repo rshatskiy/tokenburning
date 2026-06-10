@@ -1,5 +1,7 @@
 # tokenburning installer for Windows — downloads the latest release binary.
 $ErrorActionPreference = "Stop"
+# Windows PowerShell 5 по умолчанию может ходить по TLS 1.0 — GitHub такое отклоняет.
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 $repo = "rshatskiy/tokenburning"
 $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" }
 
@@ -10,8 +12,9 @@ $fname = "tokenburning_${ver}_windows_${arch}.zip"
 $mirror = "https://tokenburning.ru/dl/$tag"
 $ghbase = "https://github.com/$repo/releases/download/$tag"
 function Fetch($name, $out) {
-    try { Invoke-WebRequest -Uri "$mirror/$name" -OutFile $out -ErrorAction Stop }
-    catch { Invoke-WebRequest -Uri "$ghbase/$name" -OutFile $out }
+    # TimeoutSec у зеркала: если оно недоступно, быстро падаем на GitHub.
+    try { Invoke-WebRequest -Uri "$mirror/$name" -OutFile $out -TimeoutSec 60 -ErrorAction Stop }
+    catch { Invoke-WebRequest -Uri "$ghbase/$name" -OutFile $out -TimeoutSec 300 }
 }
 
 $dest = Join-Path $env:LOCALAPPDATA "tokenburning"
@@ -63,3 +66,4 @@ Write-Host "    2) run:  tokenburning connect --to https://tokenburning.ru --tok
 Write-Host ""
 Write-Host "Opening your dashboard..."
 Start-Process -FilePath $exe -ArgumentList "dashboard"
+Write-Host "(if it didn't open: run 'tokenburning dashboard' in this window)"

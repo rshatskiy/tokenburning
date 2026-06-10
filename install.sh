@@ -17,7 +17,7 @@ case "$os" in
   *) echo "tokenburning: unsupported OS: $os (on Windows use install.ps1)" >&2; exit 1 ;;
 esac
 
-tag=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" \
+tag=$(curl -fsSL --connect-timeout 15 "https://api.github.com/repos/$REPO/releases/latest" \
   | grep '"tag_name"' | head -1 | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')
 if [ -z "$tag" ]; then
   echo "tokenburning: could not find the latest release" >&2; exit 1
@@ -28,7 +28,10 @@ fname="${BIN}_${ver}_${os}_${arch}.tar.gz"
 mirror="https://tokenburning.ru/dl/$tag"
 gh="https://github.com/$REPO/releases/download/$tag"
 fetch() { # $1=filename $2=outfile
-  curl -fsSL "$mirror/$1" -o "$2" 2>/dev/null || curl -fsSL "$gh/$1" -o "$2"
+  # --connect-timeout: если зеркало недоступно, быстро падаем на GitHub,
+  # а не ждём полный TCP-timeout.
+  curl -fsSL --connect-timeout 10 "$mirror/$1" -o "$2" 2>/dev/null \
+    || curl -fsSL --connect-timeout 15 "$gh/$1" -o "$2"
 }
 
 tmp=$(mktemp -d)
@@ -80,9 +83,12 @@ if [ "$inpath" -eq 0 ]; then
   echo "Note: add it to your PATH for the 'tokenburning' command:"
   echo "    export PATH=\"$dest:\$PATH\""
 fi
-# Авто-открытие дашборда, если установка идёт в интерактивном терминале
+# Авто-открытие дашборда, если установка идёт в интерактивном терминале.
+# Вывод — в лог, а не в /dev/null: иначе падение дашборда невидимо для пользователя.
 if [ -t 1 ] && [ -z "$TOKENBURNING_NO_LAUNCH" ]; then
   echo ""
   echo "Opening your dashboard…"
-  ( nohup "$dest/$BIN" dashboard >/dev/null 2>&1 & ) 2>/dev/null || true
+  mkdir -p "$HOME/.tokenburning"
+  ( nohup "$dest/$BIN" dashboard >"$HOME/.tokenburning/install.log" 2>&1 & ) 2>/dev/null || true
+  echo "(if it didn't open: run 'tokenburning dashboard'; log: ~/.tokenburning/install.log)"
 fi
