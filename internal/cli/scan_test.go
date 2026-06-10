@@ -18,6 +18,7 @@ func TestRunScanProducesSummary(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // Windows: os.UserHomeDir читает USERPROFILE
 	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(home, ".claude"))
 	t.Setenv("CODEX_HOME", filepath.Join(home, "no-codex"))
 
@@ -42,6 +43,7 @@ func TestRunScanPrintsPerToolSection(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // Windows: os.UserHomeDir читает USERPROFILE
 	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(home, ".claude"))
 	t.Setenv("CODEX_HOME", filepath.Join(home, "no-codex"))
 	dbPath := filepath.Join(t.TempDir(), "tokenburning.db")
@@ -62,6 +64,7 @@ func TestRescanAfterRewriteNoDuplicateCounts(t *testing.T) {
 	}
 	logPath := filepath.Join(projDir, "a.jsonl")
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // Windows: os.UserHomeDir читает USERPROFILE
 	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(home, ".claude"))
 	t.Setenv("CODEX_HOME", filepath.Join(home, "no-codex"))
 	dbPath := filepath.Join(t.TempDir(), "tokenburning.db")

@@ -6,7 +6,9 @@ import (
 )
 
 func TestSaveLoadRoundTrip(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 
 	cfg := Config{
 		IntervalMinutes: 30,
@@ -52,7 +54,9 @@ func TestIntervalCustom(t *testing.T) {
 }
 
 func TestLoadMissingFileReturnsDefaults(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load of missing file: %v", err)

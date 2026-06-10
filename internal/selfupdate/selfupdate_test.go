@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -77,9 +78,11 @@ func TestReplaceFile(t *testing.T) {
 	if string(got) != "NEWVERSION" {
 		t.Fatalf("content = %q", got)
 	}
-	info, _ := os.Stat(target)
-	if info.Mode().Perm()&0o100 == 0 {
-		t.Errorf("binary not executable: %v", info.Mode())
+	if runtime.GOOS != "windows" { // на Windows нет unix-битов исполняемости
+		info, _ := os.Stat(target)
+		if info.Mode().Perm()&0o100 == 0 {
+			t.Errorf("binary not executable: %v", info.Mode())
+		}
 	}
 	// в каталоге не должно остаться временных файлов
 	entries, _ := os.ReadDir(dir)

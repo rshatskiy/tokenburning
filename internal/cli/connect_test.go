@@ -15,6 +15,7 @@ import (
 func TestConnectSavesConfigAndPushes(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // Windows: os.UserHomeDir читает USERPROFILE
 	if err := os.MkdirAll(filepath.Join(home, ".tokenburning"), 0o755); err != nil {
 		t.Fatal(err)
 	}

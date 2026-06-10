@@ -23,6 +23,7 @@ func TestRunCollectsOne(t *testing.T) {
 	}
 	// Isolate all three adapters to temp dirs so we pick up exactly one event.
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // Windows: os.UserHomeDir читает USERPROFILE
 	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(home, ".claude"))
 	t.Setenv("CODEX_HOME", filepath.Join(home, "no-codex"))
 
@@ -79,6 +80,7 @@ func TestRunIncremental(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // Windows: os.UserHomeDir читает USERPROFILE
 	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(home, ".claude"))
 	t.Setenv("CODEX_HOME", filepath.Join(home, "no-codex"))
 

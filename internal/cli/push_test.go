@@ -18,6 +18,7 @@ import (
 func TestPushSendsBearerToken(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // Windows: os.UserHomeDir читает USERPROFILE
 	if err := os.MkdirAll(filepath.Join(home, ".tokenburning"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -49,6 +50,7 @@ func TestPushToTestServer(t *testing.T) {
 	// фейковая БД в HOME
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // Windows: os.UserHomeDir читает USERPROFILE
 	if err := os.MkdirAll(filepath.Join(home, ".tokenburning"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -73,6 +75,7 @@ func TestPushToTestServer(t *testing.T) {
 func TestPushDryRunPrintsSafePayload(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // Windows: os.UserHomeDir читает USERPROFILE
 	dbDir := filepath.Join(home, ".tokenburning")
 	if err := os.MkdirAll(dbDir, 0o755); err != nil {
 		t.Fatal(err)

@@ -46,7 +46,7 @@ func TestDetectHonorsClaudeConfigDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
-	if paths.ClaudeCodeProjects != "/custom/projects" {
+	if paths.ClaudeCodeProjects != filepath.Join("/custom", "projects") {
 		t.Fatalf("ClaudeCodeProjects = %q, want /custom/projects", paths.ClaudeCodeProjects)
 	}
 }
@@ -57,7 +57,7 @@ func TestDetectCodexHomeOverride(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
-	if p.CodexSessions != "/custom-codex/sessions" {
+	if p.CodexSessions != filepath.Join("/custom-codex", "sessions") {
 		t.Fatalf("CodexSessions = %q, want /custom-codex/sessions", p.CodexSessions)
 	}
 }
