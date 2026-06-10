@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/rshatskiy/tokenburning/internal/model"
 )
@@ -37,9 +38,33 @@ func LoadEmbedded() (*Catalog, error) {
 	return &c, nil
 }
 
+// lookup ищет цену с нормализацией имени: точное совпадение → отрезанный
+// суффикс вида "[1m]" (вариант контекстного окна, цена та же) → самый длинный
+// известный префикс (датированные id вроде claude-opus-4-5-20251101).
+func (c *Catalog) lookup(name string) (modelPrice, bool) {
+	if p, ok := c.Models[name]; ok {
+		return p, true
+	}
+	if i := strings.IndexByte(name, '['); i > 0 {
+		if p, ok := c.Models[name[:i]]; ok {
+			return p, true
+		}
+	}
+	best := ""
+	for k := range c.Models {
+		if len(k) > len(best) && strings.HasPrefix(name, k+"-") {
+			best = k
+		}
+	}
+	if best != "" {
+		return c.Models[best], true
+	}
+	return modelPrice{}, false
+}
+
 // Cost считает стоимость по разбивке токенов. Неизвестная модель → estimated с нулём.
 func (c *Catalog) Cost(modelName string, tk model.Tokens) model.Cost {
-	p, ok := c.Models[modelName]
+	p, ok := c.lookup(modelName)
 	if !ok {
 		return model.Cost{Amount: 0, Currency: c.Currency, Basis: model.BasisEstimated, PricingVersion: c.Version}
 	}
@@ -55,7 +80,7 @@ func (c *Catalog) Cost(modelName string, tk model.Tokens) model.Cost {
 // CacheSavings оценивает экономию на cache-read токенах модели против цены свежего input
 // (сколько стоили бы те же токены как обычный input). 0 для неизвестной модели.
 func (c *Catalog) CacheSavings(modelName string, cacheReadTokens int64) float64 {
-	p, ok := c.Models[modelName]
+	p, ok := c.lookup(modelName)
 	if !ok {
 		return 0
 	}
