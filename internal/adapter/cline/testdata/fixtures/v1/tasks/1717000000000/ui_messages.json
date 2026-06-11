@@ -1,0 +1,10 @@
+[
+  {"ts": 1717000000001, "type": "say", "say": "task", "text": "Поправь баг в парсере"},
+  {"ts": 1717000000002, "type": "say", "say": "text", "text": "Хорошо, смотрю."},
+  {"ts": 1717000000500, "type": "say", "say": "api_req_started", "text": "{\"request\":\"<task>\\nПоправь баг в парсере\\n</task>\",\"tokensIn\":1200,\"tokensOut\":350,\"cacheWrites\":800,\"cacheReads\":4500,\"cost\":0.0123}"},
+  {"ts": 1717000001000, "type": "say", "say": "api_req_finished", "text": ""},
+  {"ts": 1717000002000, "type": "say", "say": "api_req_started", "text": "{\"request\":\"...\",\"tokensIn\":0,\"tokensOut\":0,\"cancelReason\":\"user_cancelled\"}"},
+  {"ts": 1717000003000, "type": "say", "say": "api_req_started", "text": "{broken json"},
+  {"ts": 1717000004000, "type": "say", "say": "api_req_started", "text": "{\"request\":\"...\",\"tokensIn\":20,\"tokensOut\":7,\"cost\":0.0011}"},
+  {"ts": 1717000005000, "type": "ask", "ask": "completion_result", "text": ""}
+]

@@ -1,0 +1,6 @@
+{"sessionId":"a1b2c3d4-e5f6-4789-a012-b345c678d901","projectHash":"8c1d2e3f4a5b","startTime":"2026-06-11T08:00:00.000Z","kind":"chat"}
+{"$set":{"lastUpdated":"2026-06-11T08:05:00.000Z"}}
+{"id":"m-101","timestamp":"2026-06-11T08:00:05.000Z","type":"user","content":"привет"}
+{"id":"m-102","timestamp":"2026-06-11T08:00:09.412Z","type":"gemini","content":"Привет!","model":"gemini-3-flash-preview","tokens":{"input":1500,"output":220,"cached":900,"thoughts":64,"tool":0,"total":2684}}
+это вообще не JSON
+{"id":"m-103","timestamp":"2026-06-11T08:01:00.000Z","type":"gemini","content":"полный кэш-хит","model":"gemini-3.1-pro-preview","tokens":{"input":2400,"output":510,"cached":2400,"thoughts":0}}

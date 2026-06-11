@@ -8,8 +8,12 @@ import (
 
 	"github.com/rshatskiy/tokenburning/internal/adapter"
 	"github.com/rshatskiy/tokenburning/internal/adapter/claudecode"
+	"github.com/rshatskiy/tokenburning/internal/adapter/cline"
 	"github.com/rshatskiy/tokenburning/internal/adapter/codex"
+	"github.com/rshatskiy/tokenburning/internal/adapter/copilot"
 	"github.com/rshatskiy/tokenburning/internal/adapter/cursor"
+	"github.com/rshatskiy/tokenburning/internal/adapter/gemini"
+	"github.com/rshatskiy/tokenburning/internal/adapter/opencode"
 	"github.com/rshatskiy/tokenburning/internal/model"
 	"github.com/rshatskiy/tokenburning/internal/platform"
 	"github.com/rshatskiy/tokenburning/internal/pricing"
@@ -53,7 +57,10 @@ func headerHash(path string, n int64) string {
 
 // Adapters возвращает реестр всех адаптеров.
 func Adapters() []adapter.Adapter {
-	return []adapter.Adapter{claudecode.New(), codex.New(), cursor.New()}
+	return []adapter.Adapter{
+		claudecode.New(), codex.New(), cursor.New(),
+		gemini.New(), copilot.New(), opencode.New(), cline.New(),
+	}
 }
 
 // Progress опционально вызывается на каждый источник.

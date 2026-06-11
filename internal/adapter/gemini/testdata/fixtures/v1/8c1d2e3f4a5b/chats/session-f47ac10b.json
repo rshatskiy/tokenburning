@@ -1,0 +1,59 @@
+{
+  "sessionId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "projectHash": "8c1d2e3f4a5b",
+  "startTime": "2026-06-10T09:15:00.000Z",
+  "lastUpdated": "2026-06-10T09:18:42.317Z",
+  "messages": [
+    {
+      "id": "m-001",
+      "timestamp": "2026-06-10T09:15:03.120Z",
+      "type": "user",
+      "content": "найди баг в collect.go"
+    },
+    {
+      "id": "m-002",
+      "timestamp": "2026-06-10T09:15:09.844Z",
+      "type": "gemini",
+      "content": "Смотрю файл...",
+      "model": "gemini-2.5-pro",
+      "tokens": { "input": 5200, "output": 310, "cached": 4100, "thoughts": 128, "tool": 0, "total": 9738 },
+      "toolCalls": [
+        { "id": "tc-1", "name": "read_file", "args": { "path": "collect.go" }, "status": "success" }
+      ]
+    },
+    {
+      "id": "m-003",
+      "timestamp": "2026-06-10T09:15:10.001Z",
+      "type": "info",
+      "content": "tool finished"
+    },
+    {
+      "id": "m-004",
+      "timestamp": "2026-06-10T09:16:00.500Z",
+      "type": "user",
+      "content": [ { "text": "теперь почини" } ]
+    },
+    {
+      "timestamp": "2026-06-10T09:16:07.230Z",
+      "type": "gemini",
+      "content": "Готово.",
+      "model": "gemini-2.5-flash",
+      "tokens": { "input": 800, "output": 95 }
+    },
+    {
+      "id": "m-006",
+      "timestamp": "2026-06-10T09:17:00.000Z",
+      "type": "gemini",
+      "content": "пустой usage",
+      "model": "gemini-2.5-flash",
+      "tokens": { "input": 0, "output": 0, "cached": 0, "thoughts": 0 }
+    },
+    {
+      "id": "m-007",
+      "timestamp": "2026-06-10T09:18:00.000Z",
+      "type": "gemini",
+      "content": "без модели",
+      "tokens": { "input": 10, "output": 5 }
+    }
+  ]
+}

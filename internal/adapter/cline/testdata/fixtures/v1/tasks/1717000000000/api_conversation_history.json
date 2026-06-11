@@ -1,0 +1,15 @@
+[
+  {
+    "role": "user",
+    "content": [
+      {"type": "text", "text": "<task>\nПоправь баг в парсере\n</task>"},
+      {"type": "text", "text": "<environment_details>\n# VSCode Visible Files\nsrc/parser.go\n\n# Current Workspace Directory (/Users/dev/myproject) Files\nsrc/\nREADME.md\n</environment_details>\n<model>anthropic/claude-sonnet-4-5</model>"}
+    ]
+  },
+  {
+    "role": "assistant",
+    "content": [
+      {"type": "text", "text": "Смотрю parser.go."}
+    ]
+  }
+]

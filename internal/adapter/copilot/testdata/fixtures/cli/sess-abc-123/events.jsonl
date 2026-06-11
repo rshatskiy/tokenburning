@@ -1,0 +1,5 @@
+{"type":"session.model_change","timestamp":"2026-06-01T10:00:00Z","data":{"newModel":"gpt-5"}}
+{"type":"user.message","timestamp":"2026-06-01T10:00:01Z","data":{"content":"fix the parser"}}
+{"type":"assistant.message","timestamp":"2026-06-01T10:00:05Z","data":{"messageId":"m1","outputTokens":123,"toolRequests":[{"name":"read_file","toolCallId":"call_001"}]}}
+{"type":"assistant.message","timestamp":"2026-06-01T10:00:06Z","data":{"messageId":"m2","outputTokens":0}}
+{"type":"assistant.message","timestamp":"2026-06-01T10:00:09Z","data":{"messageId":"m3","outputTokens":50,"model":"claude-sonnet-4-5"}}

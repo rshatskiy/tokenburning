@@ -1,0 +1,5 @@
+{"type":"session.start","timestamp":"2026-06-03T12:00:00Z","data":{"sessionId":"0198c3a0-1111-2222-3333-444455556666","producer":"copilot-agent"}}
+{"type":"user.message","timestamp":"2026-06-03T12:00:01Z","data":{"content":"Fix the bug in parser"}}
+{"type":"assistant.message","timestamp":"2026-06-03T12:00:05Z","data":{"messageId":"t1","content":"Fixed the parser bug.","reasoningText":"Thinking...","toolRequests":[{"toolCallId":"toolu_01AbC","name":"read_file"},{"toolCallId":"toolu_01XyZ","name":"replace_string_in_file"}]}}
+{"type":"assistant.message","timestamp":"2026-06-03T12:00:06Z","data":{"messageId":"t2","content":""}}
+{"type":"assistant.message","timestamp":"2026-06-03T12:00:09Z","data":{"messageId":"t3","content":"Done","outputTokens":7,"toolRequests":"oops-not-an-array"}}
