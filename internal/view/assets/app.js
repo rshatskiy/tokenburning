@@ -2,7 +2,7 @@ const I18N = {
   en: {
     all: "all", nodata: "no data", none: "(none)", session: "session",
     emptyTitle: "No data yet",
-    emptyBody: "No logs from Claude Code, Codex or Cursor were found on this machine. Use your AI tools, then refresh this page — or run <code>tokenburning scan</code> in a terminal.",
+    emptyBody: "No AI coding tool logs were found on this machine (we look for Claude Code, Codex, Cursor, Gemini CLI, Copilot, OpenCode and the Cline family). Use your tools, then refresh — or run <code>tokenburning scan</code> in a terminal.",
     cost: "Cost", cacheRead: "% cache read", tokens: "Tokens", activeDays: "Active days",
     sessionsSuffix: " sessions", tools: "Tools",
     costOverTime: "Cost over time", usdPerDay: "USD / day",
@@ -60,7 +60,7 @@ const I18N = {
     in_claude_md_big: "CLAUDE.md занимает {kb} КБ (~{tok} ток.) и входит в каждый запрос — сократите или разнесите по скиллам",
     in_mcp_many: "подключено {count} MCP-серверов — каждый добавляет схемы в контекст; отключите неиспользуемые",
     emptyTitle: "Данных пока нет",
-    emptyBody: "Логи Claude Code, Codex или Cursor на этой машине не найдены. Поработайте с ИИ-инструментами и обновите страницу — или выполните <code>tokenburning scan</code> в терминале.",
+    emptyBody: "Логи ИИ-инструментов на этой машине не найдены (ищем Claude Code, Codex, Cursor, Gemini CLI, Copilot, OpenCode и семейство Cline). Поработайте с инструментами и обновите страницу — или выполните <code>tokenburning scan</code> в терминале.",
     cost: "Стоимость", cacheRead: "% кэш-чтения", tokens: "Токены", activeDays: "Активных дней",
     sessionsSuffix: " сессий", tools: "Инструменты",
     costOverTime: "Стоимость во времени", usdPerDay: "USD / день",

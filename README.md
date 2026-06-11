@@ -52,6 +52,10 @@ tokenburning scan        # parse local logs, print cost by tool/model
 tokenburning scan --period today --format json   # periods, filters, JSON/CSV export
 tokenburning status      # one-liner: today + month (for status bars)
 tokenburning plan set claude-max   # show "extracted ×N from your plan"
+tokenburning optimize    # find where tokens and money leak — with fixes
+tokenburning compare     # compare models: one-shot rate, retries, cost
+tokenburning currency RUB  # display in RUB (CBR rates) or EUR
+tokenburning alias <from> <to>   # map proxy-renamed models to pricing
 tokenburning dashboard   # open the local web dashboard (127.0.0.1, token-gated)
 tokenburning update      # self-update to the latest release (SHA-256 verified)
 tokenburning version
