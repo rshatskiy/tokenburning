@@ -34,6 +34,9 @@ const I18N = {
     savedTip: "Estimated savings: your cache-read tokens cost ~10× less than fresh input would. Without caching this bill would be far higher.",
     share: "Share ↗", shareTitle: "Share your stats", dl: "Download", copyImg: "Copy image", copied: "Copied!", postX: "Post on X",
     planLine: "extracted ×{x} from your ${m}/mo plan this month",
+    pToday: "today", pMonth: "month",
+    planForecast: "on pace for ×{x} (≈{c}) by month end",
+    insightsOk: "no obvious leaks: cache is stable, sessions look normal, every model is priced ✓",
     qualityT: "Model quality", qualityHint: "one-shot = edit accepted without re-editing the same file after a shell command; local-log estimate (Claude Code)",
     qEdits: "edits", qRetries: "retries", qOneShot: "one-shot",
     insightsT: "Insights", insightsHint: "deterministic signals from your local data — what to fix, not just numbers",
@@ -51,6 +54,9 @@ const I18N = {
   ru: {
     all: "всё", nodata: "нет данных", none: "(нет)", session: "сессия",
     planLine: "извлечено ×{x} из подписки ${m}/мес за этот месяц",
+    pToday: "сегодня", pMonth: "месяц",
+    planForecast: "темп — ×{x} (≈{c}) к концу месяца",
+    insightsOk: "явных утечек нет: кэш стабилен, сессии в норме, все модели оценены ✓",
     qualityT: "Качество по моделям", qualityHint: "one-shot = правка принята без повторного редактирования файла после shell-команды; оценка по локальным логам (Claude Code)",
     qEdits: "правок", qRetries: "повторов", qOneShot: "one-shot",
     insightsT: "Инсайты", insightsHint: "детерминированные сигналы из ваших локальных данных — что исправить, а не просто цифры",
@@ -143,8 +149,9 @@ function rerender() {
 
 function renderPeriod() {
   const seg = $("#period"); seg.innerHTML = "";
-  for (const p of ["7d","30d","90d","all"]) {
-    const s = el(`<span${p===period?' class="on"':''}>${p==="all"?t('all'):p}</span>`);
+  for (const p of ["today","7d","30d","90d","month","all"]) {
+    const lbl = p==="all"?t('all'):p==="today"?t('pToday'):p==="month"?t('pMonth'):p;
+    const s = el(`<span${p===period?' class="on"':''}>${lbl}</span>`);
     s.onclick = () => { period = p; load(); };
     seg.appendChild(s);
   }
@@ -246,7 +253,13 @@ function render(s) {
   const cachePct = k.tokens ? Math.round(k.cacheReadTokens/k.tokens*100) : 0;
   const saved = s.cacheSavings || 0;
   const savedLine = saved > 1 ? `<br><span style="color:var(--acc)">${t('cacheSaved')} ≈${fmtUSD(saved)}</span>${info(t('savedTip'))}` : "";
-  const planLine = s.plan && s.plan.multiplier > 0 ? `<br><span style="color:var(--acc)">${t('planLine').replace('{x}', s.plan.multiplier.toFixed(1)).replace('{m}', Math.round(s.plan.monthlyUsd))}</span>` : "";
+  let planLine = "";
+  if (s.plan && s.plan.multiplier > 0) {
+    planLine = `<br><span style="color:var(--acc)">${t('planLine').replace('{x}', s.plan.multiplier.toFixed(1)).replace('{m}', Math.round(s.plan.monthlyUsd))}</span>`;
+    if (s.plan.forecastX > 0) {
+      planLine += `<br><span style="color:var(--dim);font-size:11px">${t('planForecast').replace('{x}', s.plan.forecastX.toFixed(1)).replace('{c}', fmtUSD(s.plan.forecastCost))}</span>`;
+    }
+  }
   const cacheSub = `${cachePct}${t('cacheRead')}${info(t('cacheTip'))}${savedLine}${planLine}`;
   app.appendChild(el(`<div class="kpis">
     ${kpiCard(t('cost'), fmtUSD(k.cost), cacheSub, true, t('costTip'))}
@@ -254,7 +267,10 @@ function render(s) {
     ${kpiCard(t('activeDays'), k.activeDays+"", k.sessions+t('sessionsSuffix'), false, t('activeDaysTip'))}
     ${kpiCard(t('tools'), (k.tools||[]).length+"", esc((k.tools||[]).join(" · ")))}
   </div>`));
-  // инсайты — «что исправить», по сигналам сервера
+  // инсайты — «что исправить», по сигналам сервера; пусто = хорошие новости
+  if (!s.insights || !s.insights.length) {
+    app.appendChild(el(`<div class="shell"><div class="core" style="padding:14px 22px"><span style="font-size:13px;color:#86efac">${t('insightsOk')}</span></div></div>`));
+  }
   if (s.insights && s.insights.length) {
     const fmtIns = (i) => {
       const d = i.data || {};
@@ -273,7 +289,14 @@ function render(s) {
   }
   // качество по моделям (one-shot/retry)
   if (s.quality && s.quality.length) {
-    const qrows = s.quality.map(q => `<tr><td>${esc(q.model)}</td><td class=n>${q.editTurns}</td><td class=n>${q.retries}</td><td class=n><b style="color:${q.oneShotPct>=85?'#86efac':q.oneShotPct>=70?'#fbbf77':'#f87171'}">${q.oneShotPct.toFixed(0)}%</b></td></tr>`).join('');
+    const qrows = s.quality.map(q => {
+      let delta = "";
+      if (q.deltaPct != null && Math.abs(q.deltaPct) >= 1) {
+        const up = q.deltaPct > 0;
+        delta = ` <span style="font-size:11px;color:${up?'#86efac':'#f87171'}">${up?'↑':'↓'}${Math.abs(q.deltaPct).toFixed(0)}</span>`;
+      }
+      return `<tr><td>${esc(q.model)}</td><td class=n>${q.editTurns}</td><td class=n>${q.retries}</td><td class=n><b style="color:${q.oneShotPct>=85?'#86efac':q.oneShotPct>=70?'#fbbf77':'#f87171'}">${q.oneShotPct.toFixed(0)}%</b>${delta}</td></tr>`;
+    }).join('');
     app.appendChild(el(`<div class="shell"><div class="core"><div class="ctitle"><h3>${t('qualityT')}</h3><span class="meta">${t('qualityHint')}</span></div><table style="width:100%;border-collapse:collapse;font-size:13px"><tr><th style="text-align:left;color:#8a857d;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:8px 6px">Model</th><th class=n style="color:#8a857d;font-size:11px;text-transform:uppercase;padding:8px 6px;text-align:right">${t('qEdits')}</th><th class=n style="color:#8a857d;font-size:11px;text-transform:uppercase;padding:8px 6px;text-align:right">${t('qRetries')}</th><th class=n style="color:#8a857d;font-size:11px;text-transform:uppercase;padding:8px 6px;text-align:right">${t('qOneShot')}</th></tr>${qrows}</table></div></div>`));
   }
   // cost over time + by model

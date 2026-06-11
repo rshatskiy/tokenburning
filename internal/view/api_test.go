@@ -9,15 +9,19 @@ import (
 	"github.com/rshatskiy/tokenburning/internal/store"
 )
 
-func TestParsePeriod(t *testing.T) {
-	if d := parsePeriodDays("7d"); d != 7 {
-		t.Fatalf("7d → %d, want 7", d)
+func TestPeriodSince(t *testing.T) {
+	now := time.Date(2026, 6, 11, 15, 30, 0, 0, time.Local)
+	if got := periodSince("today", now); got != time.Date(2026, 6, 11, 0, 0, 0, 0, time.Local) {
+		t.Fatalf("today → %v", got)
 	}
-	if d := parsePeriodDays("all"); d != 0 {
-		t.Fatalf("all → %d, want 0", d)
+	if got := periodSince("month", now); got != time.Date(2026, 6, 1, 0, 0, 0, 0, time.Local) {
+		t.Fatalf("month → %v", got)
 	}
-	if d := parsePeriodDays("garbage"); d != 30 {
-		t.Fatalf("default → %d, want 30", d)
+	if got := periodSince("all", now); !got.IsZero() {
+		t.Fatalf("all → %v, want zero", got)
+	}
+	if got := periodSince("garbage", now); got != periodSince("30d", now) {
+		t.Fatalf("default должен совпадать с 30d: %v", got)
 	}
 }
 

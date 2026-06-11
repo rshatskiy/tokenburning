@@ -13,11 +13,12 @@ import (
 
 // ModelQuality — агрегат по модели за период.
 type ModelQuality struct {
-	Model      string  `json:"model"`
-	EditTurns  int     `json:"editTurns"`  // правок файлов всего
-	Retries    int     `json:"retries"`    // правок, оказавшихся повтором после Bash
-	OneShotPct float64 `json:"oneShotPct"` // (EditTurns-Retries)/EditTurns*100
-	Sessions   int     `json:"sessions"`
+	Model      string   `json:"model"`
+	EditTurns  int      `json:"editTurns"`  // правок файлов всего
+	Retries    int      `json:"retries"`    // правок, оказавшихся повтором после Bash
+	OneShotPct float64  `json:"oneShotPct"` // (EditTurns-Retries)/EditTurns*100
+	Sessions   int      `json:"sessions"`
+	DeltaPct   *float64 `json:"deltaPct,omitempty"` // изменение one-shot к прошлому окну, п.п.
 }
 
 type rawMsg struct {
