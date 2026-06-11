@@ -279,6 +279,40 @@ function render(s) {
     ${kpiCard(t('activeDays'), k.activeDays+"", k.sessions+t('sessionsSuffix'), false, t('activeDaysTip'))}
     ${kpiCard(t('tools'), (k.tools||[]).length+"", esc((k.tools||[]).join(" · ")))}
   </div>`));
+  // качество по моделям (one-shot/retry) — рендерится под графиком стоимости
+  let qualityCard = "";
+  if (s.quality && s.quality.length) {
+    const qrows = s.quality.map(q => {
+      let delta = "";
+      if (q.deltaPct != null && Math.abs(q.deltaPct) >= 1) {
+        const up = q.deltaPct > 0;
+        delta = ` <span style="font-size:11px;color:${up?'#86efac':'#f87171'}">${up?'↑':'↓'}${Math.abs(q.deltaPct).toFixed(0)}</span>`;
+      }
+      return `<tr><td>${esc(q.model)}</td><td class="r">${q.editTurns}</td><td class="r">${q.retries}</td><td class="r"><b style="color:${q.oneShotPct>=85?'#86efac':q.oneShotPct>=70?'#fbbf77':'#f87171'}">${q.oneShotPct.toFixed(0)}%</b>${delta}</td></tr>`;
+    }).join('');
+    qualityCard = `<div class="shell"><div class="core"><div class="ctitle"><h3>${t('qualityT')}</h3><span class="meta">${t('qualityHint')}</span></div><table class="qtable"><tr><th>${t('qModel')}</th><th class="r">${t('qEdits')}</th><th class="r">${t('qRetries')}</th><th class="r">${t('qOneShot')}</th></tr>${qrows}</table></div></div>`;
+  }
+  // cost over time + by model
+  const maxModel = Math.max(...(s.byModel||[]).map(m=>m.cost),1);
+  app.appendChild(el(`<div class="grid2">
+    <div class="stack"><div class="shell"><div class="core"><div class="ctitle"><h3>${t('costOverTime')}</h3><span class="meta">${t('usdPerDay')}</span></div>${areaChart(s.costOverTime||[])}</div></div>${qualityCard}</div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byModel')}</h3><span class="meta">${t('shareUsd')} · ${t('tokShort')}${info(t('barTip'))}</span></div>${bars(s.byModel||[], m=>m.model, m=>m.cost, maxModel, m=>`${esc(m.model)}<br><b>${m.cost>0?fmtUSD(m.cost):"~est"}</b> · ${fmtTok(m.tokens)} ${t('tokShort')} · ${m.events} ${t('events')}`, m=>`${fmtTok(m.tokens)} ${t('tokShort')}`)}</div></div>
+  </div>`));
+  // слева стопкой: По инструментам + Активность · справа: Топ проектов
+  const maxTool = Math.max(...(s.byTool||[]).map(tool=>tool.cost),1);
+  const shortProj = (p) => p.replace(/^(\/Users\/[^/]+\/|\/home\/[^/]+\/|[A-Za-z]:[\\/]Users[\\/][^\\/]+[\\/])/, "") || p;
+  const proj = (s.topProjects||[]).slice(0,6).map(p=>`<div class="proj" data-tip="${escAttr(p.project)}"><div><div>${esc(shortProj(p.project))}</div><div class="p-meta">${p.sessions}${t('sessionsSuffix')}</div></div><span style="font-family:var(--mono);font-variant-numeric:tabular-nums">${fmtUSD(p.cost)}</span></div>`).join("");
+  const avgDay = k.activeDays ? (k.sessions/k.activeDays).toFixed(1) : "0";
+  app.appendChild(el(`<div class="rowA">
+    <div class="stack">
+      <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byTool')}</h3><span class="meta">${t('shareUsd')} · ${t('tokShort')}</span></div>${bars(s.byTool||[], tool=>tool.tool, tool=>tool.cost, maxTool, tool=>`${esc(tool.tool)}<br><b>${tool.cost>0?fmtUSD(tool.cost):"~est"}</b> · ${fmtTok(tool.tokens)} ${t('tokShort')} · ${tool.events} ${t('evShort')}`, tool=>`${fmtTok(tool.tokens)} ${t('tokShort')}`)}<div style="margin-top:12px;font-size:11px;color:var(--dim);font-family:var(--mono)">${t('cursorActivityOnly')}</div></div></div>
+      <div class="shell"><div class="core"><div class="ctitle"><h3>${t('activity')}${info(t('activityTip'))}</h3><span class="meta">${t('sessionsPerDay')}</span></div><div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap"><div style="font-size:30px;font-weight:600;font-variant-numeric:tabular-nums">${k.sessions}</div><div class="ksub">${k.activeDays} ${t('activeDaysWord')} · ${t('avgWord')} ${avgDay}${t('perDaySfx')}</div></div>${activityChart(s.activity)}</div></div>
+    </div>
+    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('topProjects')}</h3><span class="meta">${t('perTask')}</span></div>${proj||`<div class="subtitle">${t('nodata')}</div>`}</div></div>
+  </div>`));
+  // session analytics
+  app.appendChild(el(`<div id="sess"></div>`));
+  renderSessions(s);
   // инсайты — «что исправить», по сигналам сервера; пусто = хорошие новости
   if (!s.insights || !s.insights.length) {
     app.appendChild(el(`<div class="shell solo"><div class="core" style="padding:14px 22px"><span style="font-size:13px;color:#86efac">${t('insightsOk')}</span></div></div>`));
@@ -305,39 +339,6 @@ function render(s) {
     }).join('');
     app.appendChild(el(`<div class="shell solo"><div class="core"><div class="ctitle"><h3>${t('insightsT')}</h3><span class="meta">${t('insightsHint')}</span></div>${rows}</div></div>`));
   }
-  // качество по моделям (one-shot/retry)
-  if (s.quality && s.quality.length) {
-    const qrows = s.quality.map(q => {
-      let delta = "";
-      if (q.deltaPct != null && Math.abs(q.deltaPct) >= 1) {
-        const up = q.deltaPct > 0;
-        delta = ` <span style="font-size:11px;color:${up?'#86efac':'#f87171'}">${up?'↑':'↓'}${Math.abs(q.deltaPct).toFixed(0)}</span>`;
-      }
-      return `<tr><td>${esc(q.model)}</td><td class="r">${q.editTurns}</td><td class="r">${q.retries}</td><td class="r"><b style="color:${q.oneShotPct>=85?'#86efac':q.oneShotPct>=70?'#fbbf77':'#f87171'}">${q.oneShotPct.toFixed(0)}%</b>${delta}</td></tr>`;
-    }).join('');
-    app.appendChild(el(`<div class="shell solo"><div class="core"><div class="ctitle"><h3>${t('qualityT')}</h3><span class="meta">${t('qualityHint')}</span></div><table class="qtable"><tr><th>${t('qModel')}</th><th class="r">${t('qEdits')}</th><th class="r">${t('qRetries')}</th><th class="r">${t('qOneShot')}</th></tr>${qrows}</table></div></div>`));
-  }
-  // cost over time + by model
-  const maxModel = Math.max(...(s.byModel||[]).map(m=>m.cost),1);
-  app.appendChild(el(`<div class="grid2">
-    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('costOverTime')}</h3><span class="meta">${t('usdPerDay')}</span></div>${areaChart(s.costOverTime||[])}</div></div>
-    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byModel')}</h3><span class="meta">${t('shareUsd')} · ${t('tokShort')}${info(t('barTip'))}</span></div>${bars(s.byModel||[], m=>m.model, m=>m.cost, maxModel, m=>`${esc(m.model)}<br><b>${m.cost>0?fmtUSD(m.cost):"~est"}</b> · ${fmtTok(m.tokens)} ${t('tokShort')} · ${m.events} ${t('events')}`, m=>`${fmtTok(m.tokens)} ${t('tokShort')}`)}</div></div>
-  </div>`));
-  // слева стопкой: По инструментам + Активность · справа: Топ проектов
-  const maxTool = Math.max(...(s.byTool||[]).map(tool=>tool.cost),1);
-  const shortProj = (p) => p.replace(/^(\/Users\/[^/]+\/|\/home\/[^/]+\/|[A-Za-z]:[\\/]Users[\\/][^\\/]+[\\/])/, "") || p;
-  const proj = (s.topProjects||[]).slice(0,6).map(p=>`<div class="proj" data-tip="${escAttr(p.project)}"><div><div>${esc(shortProj(p.project))}</div><div class="p-meta">${p.sessions}${t('sessionsSuffix')}</div></div><span style="font-family:var(--mono);font-variant-numeric:tabular-nums">${fmtUSD(p.cost)}</span></div>`).join("");
-  const avgDay = k.activeDays ? (k.sessions/k.activeDays).toFixed(1) : "0";
-  app.appendChild(el(`<div class="rowA">
-    <div class="stack">
-      <div class="shell"><div class="core"><div class="ctitle"><h3>${t('byTool')}</h3><span class="meta">${t('shareUsd')} · ${t('tokShort')}</span></div>${bars(s.byTool||[], tool=>tool.tool, tool=>tool.cost, maxTool, tool=>`${esc(tool.tool)}<br><b>${tool.cost>0?fmtUSD(tool.cost):"~est"}</b> · ${fmtTok(tool.tokens)} ${t('tokShort')} · ${tool.events} ${t('evShort')}`, tool=>`${fmtTok(tool.tokens)} ${t('tokShort')}`)}<div style="margin-top:12px;font-size:11px;color:var(--dim);font-family:var(--mono)">${t('cursorActivityOnly')}</div></div></div>
-      <div class="shell"><div class="core"><div class="ctitle"><h3>${t('activity')}${info(t('activityTip'))}</h3><span class="meta">${t('sessionsPerDay')}</span></div><div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap"><div style="font-size:30px;font-weight:600;font-variant-numeric:tabular-nums">${k.sessions}</div><div class="ksub">${k.activeDays} ${t('activeDaysWord')} · ${t('avgWord')} ${avgDay}${t('perDaySfx')}</div></div>${activityChart(s.activity)}</div></div>
-    </div>
-    <div class="shell"><div class="core"><div class="ctitle"><h3>${t('topProjects')}</h3><span class="meta">${t('perTask')}</span></div>${proj||`<div class="subtitle">${t('nodata')}</div>`}</div></div>
-  </div>`));
-  // session analytics
-  app.appendChild(el(`<div id="sess"></div>`));
-  renderSessions(s);
 }
 
 function renderSessions(s) {
