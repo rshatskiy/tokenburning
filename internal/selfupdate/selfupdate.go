@@ -135,22 +135,28 @@ func CheckAndApply(current string) (string, bool, error) {
 	return tag, true, nil
 }
 
-// getAsset качает релизный артефакт: сначала через зеркало на своём домене
-// (GitHub release-CDN нестабилен в РФ), затем — напрямую с GitHub.
+// getAsset качает релизный артефакт: зеркало на своём домене (GitHub
+// release-CDN нестабилен в РФ) с одним повтором против разовых сетевых сбоев,
+// затем — GitHub. В ошибке видны ВСЕ попытки, а не только последняя.
 func getAsset(tag, fname string) ([]byte, error) {
-	bases := []string{
-		"https://tokenburning.ru/dl/" + tag,
-		"https://github.com/" + repoSlug + "/releases/download/" + tag,
+	mirror := "https://tokenburning.ru/dl/" + tag
+	attempts := []struct{ name, base string }{
+		{"зеркало", mirror},
+		{"зеркало, повтор", mirror},
+		{"github", "https://github.com/" + repoSlug + "/releases/download/" + tag},
 	}
-	var lastErr error
-	for _, base := range bases {
-		b, err := getBytes(base + "/" + fname)
+	var errs []string
+	for i, a := range attempts {
+		if i == 1 {
+			time.Sleep(2 * time.Second) // пауза перед повтором: переживаем мгновенные сбои
+		}
+		b, err := getBytes(a.base + "/" + fname)
 		if err == nil {
 			return b, nil
 		}
-		lastErr = err
+		errs = append(errs, a.name+": "+err.Error())
 	}
-	return nil, lastErr
+	return nil, fmt.Errorf("%s", strings.Join(errs, "; "))
 }
 
 func getBytes(url string) ([]byte, error) {
