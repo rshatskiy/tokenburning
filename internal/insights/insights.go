@@ -73,7 +73,7 @@ func cacheDrops(db *store.DB, now time.Time) []Insight {
 		out = append(out, Insight{
 			Kind: "cache_drop", Severity: "warn",
 			Data: map[string]any{"project": proj, "fromPct": int(prevR), "toPct": int(curR)},
-			Text: fmt.Sprintf("кэш-хит в %s упал с %d%% до %d%% за неделю — что-то ломает префикс (изменчивый системный промпт/инструменты?)", filepath.Base(proj), int(prevR), int(curR)),
+			Text: fmt.Sprintf("кэш-хит в %s упал с %d%% до %d%% за неделю. Что сделать: сравните, что изменилось в начале контекста (набор MCP, системные правила, CLAUDE.md) — стабильный префикс вернёт кэш", filepath.Base(proj), int(prevR), int(curR)),
 		})
 	}
 	return out
@@ -113,7 +113,7 @@ func expensiveSessions(db *store.DB, now time.Time) []Insight {
 		out = append(out, Insight{
 			Kind: "expensive_session", Severity: "warn",
 			Data: map[string]any{"session": s.SessionID, "tool": s.Tool, "cost": s.Cost, "median": median},
-			Text: fmt.Sprintf("сессия %.8s (%s) стоила $%.2f — в %.0f раз дороже вашей медианы $%.2f; вероятно, модель забуксовала или контекст разросся", s.SessionID, s.Tool, s.Cost, s.Cost/median, median),
+			Text: fmt.Sprintf("сессия %.8s (%s) стоила $%.2f — в %.0f раз дороже вашей медианы $%.2f. Что сделать: дробите длинные сессии — после большой задачи начинайте новую, дороже всего хвост с разросшимся контекстом", s.SessionID, s.Tool, s.Cost, s.Cost/median, median),
 		})
 	}
 	return out

@@ -479,3 +479,18 @@ header {
 .cl-peak { position: absolute; transform: translate(-50%,60%); font-family: var(--mono); font-size: 11px; color: #fbbf77; white-space: nowrap; font-variant-numeric: tabular-nums; pointer-events: none; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
 .cl-pt { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: #fb923c; border: 1.5px solid #0c0b09; transform: translate(-50%,-50%); pointer-events: none; }
 .cl-pt.sm { width: 4px; height: 4px; border-width: 1px; }
+
+/* standalone-карточки (инсайты, качество) — отступ как у сеток */
+.solo { margin-top: 14px; }
+
+/* таблица качества моделей */
+.qtable { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+.qtable th { text-align: left; color: #8a857d; font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 6px; }
+.qtable td { padding: 7px 6px; border-top: 1px solid rgba(255, 255, 255, .06); }
+.qtable th.r, .qtable td.r { text-align: right; }
+
+/* инсайты: сигнал + действие */
+.ins { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid rgba(255, 255, 255, .06); font-size: 13px; line-height: 1.5; }
+.ins:last-child { border-bottom: 0; }
+.ins .act { display: block; color: #8a857d; font-size: 12px; margin-top: 3px; }
+.ins .act code { background: #0b0a08; border: 1px solid rgba(255, 255, 255, .1); border-radius: 5px; padding: 1px 6px; font-size: 11px; }

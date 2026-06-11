@@ -37,6 +37,12 @@ const I18N = {
     pToday: "today", pMonth: "month",
     planForecast: "on pace for ×{x} (≈{c}) by month end",
     insightsOk: "no obvious leaks: cache is stable, sessions look normal, every model is priced ✓",
+    qModel: "Model",
+    act_cache_drop: "→ compare what changed at the start of your context: MCP set, system rules, CLAUDE.md — a stable prefix brings the cache back",
+    act_expensive_session: "→ split long sessions: start fresh after a big task — the expensive part is the tail, when context has ballooned",
+    act_unpriced_model: "→ run: <code>tokenburning alias {model} &lt;canonical-name&gt;</code>",
+    act_claude_md_big: "→ move rarely-needed parts into skills/files — only what every request needs should ride in context",
+    act_mcp_many: "→ disable unused servers in ~/.claude.json — each one ships its tool schemas with every request",
     qualityT: "Model quality", qualityHint: "one-shot = edit accepted without re-editing the same file after a shell command; local-log estimate (Claude Code)",
     qEdits: "edits", qRetries: "retries", qOneShot: "one-shot",
     insightsT: "Insights", insightsHint: "deterministic signals from your local data — what to fix, not just numbers",
@@ -57,6 +63,12 @@ const I18N = {
     pToday: "сегодня", pMonth: "месяц",
     planForecast: "темп — ×{x} (≈{c}) к концу месяца",
     insightsOk: "явных утечек нет: кэш стабилен, сессии в норме, все модели оценены ✓",
+    qModel: "Модель",
+    act_cache_drop: "→ сравните, что изменилось в начале контекста: набор MCP, системные правила, CLAUDE.md — стабильный префикс вернёт кэш",
+    act_expensive_session: "→ дробите длинные сессии: после большой задачи начинайте новую — дороже всего хвост, когда контекст разросся",
+    act_unpriced_model: "→ выполните: <code>tokenburning alias {model} &lt;каноническое-имя&gt;</code>",
+    act_claude_md_big: "→ вынесите редко нужное в скиллы/отдельные файлы — в контексте должно ехать только то, что нужно каждому запросу",
+    act_mcp_many: "→ отключите неиспользуемые серверы в ~/.claude.json — каждый добавляет свои схемы в каждый запрос",
     qualityT: "Качество по моделям", qualityHint: "one-shot = правка принята без повторного редактирования файла после shell-команды; оценка по локальным логам (Claude Code)",
     qEdits: "правок", qRetries: "повторов", qOneShot: "one-shot",
     insightsT: "Инсайты", insightsHint: "детерминированные сигналы из ваших локальных данных — что исправить, а не просто цифры",
@@ -269,7 +281,7 @@ function render(s) {
   </div>`));
   // инсайты — «что исправить», по сигналам сервера; пусто = хорошие новости
   if (!s.insights || !s.insights.length) {
-    app.appendChild(el(`<div class="shell"><div class="core" style="padding:14px 22px"><span style="font-size:13px;color:#86efac">${t('insightsOk')}</span></div></div>`));
+    app.appendChild(el(`<div class="shell solo"><div class="core" style="padding:14px 22px"><span style="font-size:13px;color:#86efac">${t('insightsOk')}</span></div></div>`));
   }
   if (s.insights && s.insights.length) {
     const fmtIns = (i) => {
@@ -284,8 +296,14 @@ function render(s) {
         default: return esc(i.text||i.kind);
       }
     };
-    const rows = s.insights.map(i => `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px;line-height:1.5"><span style="color:${i.severity==='warn'?'#fbbf77':'#a8a29e'}">${i.severity==='warn'?'!':'•'}</span><span>${fmtIns(i)}</span></div>`).join('');
-    app.appendChild(el(`<div class="shell"><div class="core"><div class="ctitle"><h3>${t('insightsT')}</h3><span class="meta">${t('insightsHint')}</span></div>${rows}</div></div>`));
+    const rows = s.insights.map(i => {
+      const actKey = 'act_' + i.kind;
+      const d = i.data || {};
+      let act = I18N[lang][actKey] != null || I18N.en[actKey] != null ? t(actKey) : '';
+      if (act) act = act.replaceAll('{model}', esc(d.model||''));
+      return `<div class="ins"><span style="color:${i.severity==='warn'?'#fbbf77':'#a8a29e'}">${i.severity==='warn'?'!':'•'}</span><span>${fmtIns(i)}${act?`<span class="act">${act}</span>`:''}</span></div>`;
+    }).join('');
+    app.appendChild(el(`<div class="shell solo"><div class="core"><div class="ctitle"><h3>${t('insightsT')}</h3><span class="meta">${t('insightsHint')}</span></div>${rows}</div></div>`));
   }
   // качество по моделям (one-shot/retry)
   if (s.quality && s.quality.length) {
@@ -295,9 +313,9 @@ function render(s) {
         const up = q.deltaPct > 0;
         delta = ` <span style="font-size:11px;color:${up?'#86efac':'#f87171'}">${up?'↑':'↓'}${Math.abs(q.deltaPct).toFixed(0)}</span>`;
       }
-      return `<tr><td>${esc(q.model)}</td><td class=n>${q.editTurns}</td><td class=n>${q.retries}</td><td class=n><b style="color:${q.oneShotPct>=85?'#86efac':q.oneShotPct>=70?'#fbbf77':'#f87171'}">${q.oneShotPct.toFixed(0)}%</b>${delta}</td></tr>`;
+      return `<tr><td>${esc(q.model)}</td><td class="r">${q.editTurns}</td><td class="r">${q.retries}</td><td class="r"><b style="color:${q.oneShotPct>=85?'#86efac':q.oneShotPct>=70?'#fbbf77':'#f87171'}">${q.oneShotPct.toFixed(0)}%</b>${delta}</td></tr>`;
     }).join('');
-    app.appendChild(el(`<div class="shell"><div class="core"><div class="ctitle"><h3>${t('qualityT')}</h3><span class="meta">${t('qualityHint')}</span></div><table style="width:100%;border-collapse:collapse;font-size:13px"><tr><th style="text-align:left;color:#8a857d;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:8px 6px">Model</th><th class=n style="color:#8a857d;font-size:11px;text-transform:uppercase;padding:8px 6px;text-align:right">${t('qEdits')}</th><th class=n style="color:#8a857d;font-size:11px;text-transform:uppercase;padding:8px 6px;text-align:right">${t('qRetries')}</th><th class=n style="color:#8a857d;font-size:11px;text-transform:uppercase;padding:8px 6px;text-align:right">${t('qOneShot')}</th></tr>${qrows}</table></div></div>`));
+    app.appendChild(el(`<div class="shell solo"><div class="core"><div class="ctitle"><h3>${t('qualityT')}</h3><span class="meta">${t('qualityHint')}</span></div><table class="qtable"><tr><th>${t('qModel')}</th><th class="r">${t('qEdits')}</th><th class="r">${t('qRetries')}</th><th class="r">${t('qOneShot')}</th></tr>${qrows}</table></div></div>`));
   }
   // cost over time + by model
   const maxModel = Math.max(...(s.byModel||[]).map(m=>m.cost),1);
