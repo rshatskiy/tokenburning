@@ -7,6 +7,7 @@ import (
 	"github.com/rshatskiy/tokenburning/internal/aggregate"
 	"github.com/rshatskiy/tokenburning/internal/insights"
 	"github.com/rshatskiy/tokenburning/internal/pricing"
+	"github.com/rshatskiy/tokenburning/internal/quality"
 	"github.com/rshatskiy/tokenburning/internal/store"
 )
 
@@ -39,6 +40,7 @@ type Summary struct {
 	Plan           *PlanInfo              `json:"plan,omitempty"`
 	Insights       []insights.Insight     `json:"insights,omitempty"`
 	Currency       *CurrencyInfo          `json:"currency,omitempty"`
+	Quality        []quality.ModelQuality `json:"quality,omitempty"`
 }
 
 // CurrencyInfo — валюта отображения для фронта (данные всегда в USD).
@@ -105,6 +107,12 @@ func BuildSummary(db *store.DB, period string) (Summary, error) {
 	}
 	if s.SessionsByTool, err = db.SessionStatsByTool(since); err != nil {
 		return s, err
+	}
+	if rows, qerr := db.RawToolEvents(store.Filter{Since: since}); qerr == nil {
+		s.Quality = quality.Compute(rows)
+		if len(s.Quality) > 6 {
+			s.Quality = s.Quality[:6]
+		}
 	}
 	if len(s.TopProjects) > 8 {
 		s.TopProjects = s.TopProjects[:8]

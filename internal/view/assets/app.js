@@ -34,6 +34,8 @@ const I18N = {
     savedTip: "Estimated savings: your cache-read tokens cost ~10× less than fresh input would. Without caching this bill would be far higher.",
     share: "Share ↗", shareTitle: "Share your stats", dl: "Download", copyImg: "Copy image", copied: "Copied!", postX: "Post on X",
     planLine: "extracted ×{x} from your ${m}/mo plan this month",
+    qualityT: "Model quality", qualityHint: "one-shot = edit accepted without re-editing the same file after a shell command; local-log estimate (Claude Code)",
+    qEdits: "edits", qRetries: "retries", qOneShot: "one-shot",
     insightsT: "Insights", insightsHint: "deterministic signals from your local data — what to fix, not just numbers",
     in_cache_drop: "cache hit in {project} fell {from}% → {to}% this week — something breaks the prompt prefix",
     in_expensive_session: "session {session} ({tool}) cost {cost} — far above your {median} median; likely stuck or context bloat",
@@ -49,6 +51,8 @@ const I18N = {
   ru: {
     all: "всё", nodata: "нет данных", none: "(нет)", session: "сессия",
     planLine: "извлечено ×{x} из подписки ${m}/мес за этот месяц",
+    qualityT: "Качество по моделям", qualityHint: "one-shot = правка принята без повторного редактирования файла после shell-команды; оценка по локальным логам (Claude Code)",
+    qEdits: "правок", qRetries: "повторов", qOneShot: "one-shot",
     insightsT: "Инсайты", insightsHint: "детерминированные сигналы из ваших локальных данных — что исправить, а не просто цифры",
     in_cache_drop: "кэш-хит в {project} упал {from}% → {to}% за неделю — что-то ломает префикс промпта",
     in_expensive_session: "сессия {session} ({tool}) стоила {cost} — сильно выше вашей медианы {median}; вероятно, модель забуксовала",
@@ -266,6 +270,11 @@ function render(s) {
     };
     const rows = s.insights.map(i => `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px;line-height:1.5"><span style="color:${i.severity==='warn'?'#fbbf77':'#a8a29e'}">${i.severity==='warn'?'!':'•'}</span><span>${fmtIns(i)}</span></div>`).join('');
     app.appendChild(el(`<div class="shell"><div class="core"><div class="ctitle"><h3>${t('insightsT')}</h3><span class="meta">${t('insightsHint')}</span></div>${rows}</div></div>`));
+  }
+  // качество по моделям (one-shot/retry)
+  if (s.quality && s.quality.length) {
+    const qrows = s.quality.map(q => `<tr><td>${esc(q.model)}</td><td class=n>${q.editTurns}</td><td class=n>${q.retries}</td><td class=n><b style="color:${q.oneShotPct>=85?'#86efac':q.oneShotPct>=70?'#fbbf77':'#f87171'}">${q.oneShotPct.toFixed(0)}%</b></td></tr>`).join('');
+    app.appendChild(el(`<div class="shell"><div class="core"><div class="ctitle"><h3>${t('qualityT')}</h3><span class="meta">${t('qualityHint')}</span></div><table style="width:100%;border-collapse:collapse;font-size:13px"><tr><th style="text-align:left;color:#8a857d;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:8px 6px">Model</th><th class=n style="color:#8a857d;font-size:11px;text-transform:uppercase;padding:8px 6px;text-align:right">${t('qEdits')}</th><th class=n style="color:#8a857d;font-size:11px;text-transform:uppercase;padding:8px 6px;text-align:right">${t('qRetries')}</th><th class=n style="color:#8a857d;font-size:11px;text-transform:uppercase;padding:8px 6px;text-align:right">${t('qOneShot')}</th></tr>${qrows}</table></div></div>`));
   }
   // cost over time + by model
   const maxModel = Math.max(...(s.byModel||[]).map(m=>m.cost),1);

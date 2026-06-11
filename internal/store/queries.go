@@ -422,3 +422,33 @@ func (d *DB) SessionCosts(f Filter) ([]SessionCost, error) {
 	}
 	return out, rows.Err()
 }
+
+// RawToolEvent — событие с сырым содержимым для разбора tool_use-блоков.
+type RawToolEvent struct {
+	SessionID string
+	Model     string
+	TS        int64
+	Raw       []byte
+}
+
+// RawToolEvents — события claude_code с tool_use в сыром виде (для метрик
+// качества: one-shot/retry). LIKE-фильтр режет выборку ещё в SQL.
+func (d *DB) RawToolEvents(f Filter) ([]RawToolEvent, error) {
+	w, args := f.where()
+	rows, err := d.db.Query(`SELECT session_id, model, ts, extra_raw FROM events
+        WHERE tool='claude_code' AND session_id IS NOT NULL AND CAST(extra_raw AS TEXT) LIKE '%tool_use%' AND `+w+`
+        ORDER BY session_id, ts`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []RawToolEvent
+	for rows.Next() {
+		var r RawToolEvent
+		if err := rows.Scan(&r.SessionID, &r.Model, &r.TS, &r.Raw); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}

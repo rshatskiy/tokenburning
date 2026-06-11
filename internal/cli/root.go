@@ -30,6 +30,7 @@ func NewRootCmd() *cobra.Command {
 	root.AddCommand(newStatusCmd())
 	root.AddCommand(newOptimizeCmd())
 	root.AddCommand(newCurrencyCmd())
+	root.AddCommand(newCompareCmd())
 	root.AddCommand(newPlanCmd())
 	root.AddCommand(newAliasCmd())
 	return root
