@@ -1,9 +1,11 @@
 package view
 
 import (
+	"os"
 	"time"
 
 	"github.com/rshatskiy/tokenburning/internal/aggregate"
+	"github.com/rshatskiy/tokenburning/internal/insights"
 	"github.com/rshatskiy/tokenburning/internal/pricing"
 	"github.com/rshatskiy/tokenburning/internal/store"
 )
@@ -35,6 +37,15 @@ type Summary struct {
 	SessionsByTool []store.ToolSessions   `json:"sessionsByTool"`
 	CacheSavings   float64                `json:"cacheSavings"`
 	Plan           *PlanInfo              `json:"plan,omitempty"`
+	Insights       []insights.Insight     `json:"insights,omitempty"`
+	Currency       *CurrencyInfo          `json:"currency,omitempty"`
+}
+
+// CurrencyInfo — валюта отображения для фронта (данные всегда в USD).
+type CurrencyInfo struct {
+	Code   string  `json:"code"`
+	Rate   float64 `json:"rate"`
+	Symbol string  `json:"symbol"`
 }
 
 // PlanInfo — «извлечено из подписки»: API-эквивалент с начала месяца против цены плана.
@@ -42,6 +53,15 @@ type PlanInfo struct {
 	MonthlyUSD float64 `json:"monthlyUsd"`
 	MTDCost    float64 `json:"mtdCost"`
 	Multiplier float64 `json:"multiplier"`
+}
+
+// attachInsights добавляет в сводку сигналы optimize (best-effort).
+func attachInsights(s *Summary, db *store.DB) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	s.Insights = insights.Build(db, home, time.Now())
 }
 
 // attachPlan дополняет сводку метрикой подписки (no-op при usd<=0).

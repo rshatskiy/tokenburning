@@ -34,6 +34,12 @@ const I18N = {
     savedTip: "Estimated savings: your cache-read tokens cost ~10× less than fresh input would. Without caching this bill would be far higher.",
     share: "Share ↗", shareTitle: "Share your stats", dl: "Download", copyImg: "Copy image", copied: "Copied!", postX: "Post on X",
     planLine: "extracted ×{x} from your ${m}/mo plan this month",
+    insightsT: "Insights", insightsHint: "deterministic signals from your local data — what to fix, not just numbers",
+    in_cache_drop: "cache hit in {project} fell {from}% → {to}% this week — something breaks the prompt prefix",
+    in_expensive_session: "session {session} ({tool}) cost {cost} — far above your {median} median; likely stuck or context bloat",
+    in_unpriced_model: "model {model} is unpriced ($0) — map it: tokenburning alias {model} <canonical-name>",
+    in_claude_md_big: "CLAUDE.md is {kb} KB (~{tok} tokens) and rides along in every request — trim it or split into skills",
+    in_mcp_many: "{count} MCP servers connected — each adds tool schemas to context; disable unused ones",
     cardHeadline: "My AI coding spend", periodAll: "all time", periodPrefix: "last ", periodDays: " days",
     trackYours: "track yours →",
     shareHint: "\"Copy\" puts the card on your clipboard — paste into a post (⌘/Ctrl+V). Or \"Download\" the PNG.",
@@ -43,6 +49,12 @@ const I18N = {
   ru: {
     all: "всё", nodata: "нет данных", none: "(нет)", session: "сессия",
     planLine: "извлечено ×{x} из подписки ${m}/мес за этот месяц",
+    insightsT: "Инсайты", insightsHint: "детерминированные сигналы из ваших локальных данных — что исправить, а не просто цифры",
+    in_cache_drop: "кэш-хит в {project} упал {from}% → {to}% за неделю — что-то ломает префикс промпта",
+    in_expensive_session: "сессия {session} ({tool}) стоила {cost} — сильно выше вашей медианы {median}; вероятно, модель забуксовала",
+    in_unpriced_model: "модель {model} не оценена ($0) — задайте: tokenburning alias {model} <каноническое-имя>",
+    in_claude_md_big: "CLAUDE.md занимает {kb} КБ (~{tok} ток.) и входит в каждый запрос — сократите или разнесите по скиллам",
+    in_mcp_many: "подключено {count} MCP-серверов — каждый добавляет схемы в контекст; отключите неиспользуемые",
     emptyTitle: "Данных пока нет",
     emptyBody: "Логи Claude Code, Codex или Cursor на этой машине не найдены. Поработайте с ИИ-инструментами и обновите страницу — или выполните <code>tokenburning scan</code> в терминале.",
     cost: "Стоимость", cacheRead: "% кэш-чтения", tokens: "Токены", activeDays: "Активных дней",
@@ -97,7 +109,11 @@ let sessTool = null;
 const $ = (sel) => document.querySelector(sel);
 const el = (html) => { const tmpl = document.createElement("template"); tmpl.innerHTML = html.trim(); return tmpl.content.firstChild; };
 const esc = (s) => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-const fmtUSD = (n) => "$" + Math.round(n).toLocaleString(locale());
+const fmtUSD = (n) => {
+  const c = lastSummary && lastSummary.currency;
+  if (c && c.rate > 0) return Math.round(n * c.rate).toLocaleString(locale()) + " " + c.symbol;
+  return "$" + Math.round(n).toLocaleString(locale());
+};
 const fmtTok = (n) => n >= 1e9 ? (n/1e9).toFixed(1)+t('bln') : n >= 1e6 ? (n/1e6).toFixed(0)+t('mln') : n.toLocaleString(locale());
 const fmtDate = (s) => { const p = String(s).split("-"); return p.length === 3 ? p[2]+"."+p[1] : s; };
 // tip-string is already html-safe (names via esc, tags <br>/<b> are literal);
@@ -234,6 +250,23 @@ function render(s) {
     ${kpiCard(t('activeDays'), k.activeDays+"", k.sessions+t('sessionsSuffix'), false, t('activeDaysTip'))}
     ${kpiCard(t('tools'), (k.tools||[]).length+"", esc((k.tools||[]).join(" · ")))}
   </div>`));
+  // инсайты — «что исправить», по сигналам сервера
+  if (s.insights && s.insights.length) {
+    const fmtIns = (i) => {
+      const d = i.data || {};
+      const base = (p) => { const parts = String(p||'').split(/[\\/]/); return parts[parts.length-1] || p; };
+      switch (i.kind) {
+        case 'cache_drop': return t('in_cache_drop').replace('{project}', esc(base(d.project))).replace('{from}', d.fromPct).replace('{to}', d.toPct);
+        case 'expensive_session': return t('in_expensive_session').replace('{session}', esc(String(d.session||'').slice(0,8))).replace('{tool}', esc(d.tool)).replace('{cost}', fmtUSD(d.cost)).replace('{median}', fmtUSD(d.median));
+        case 'unpriced_model': return t('in_unpriced_model').replaceAll('{model}', esc(d.model));
+        case 'claude_md_big': return t('in_claude_md_big').replace('{kb}', d.kb).replace('{tok}', fmtTok(d.estTokens||0));
+        case 'mcp_many': return t('in_mcp_many').replace('{count}', d.count);
+        default: return esc(i.text||i.kind);
+      }
+    };
+    const rows = s.insights.map(i => `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px;line-height:1.5"><span style="color:${i.severity==='warn'?'#fbbf77':'#a8a29e'}">${i.severity==='warn'?'!':'•'}</span><span>${fmtIns(i)}</span></div>`).join('');
+    app.appendChild(el(`<div class="shell"><div class="core"><div class="ctitle"><h3>${t('insightsT')}</h3><span class="meta">${t('insightsHint')}</span></div>${rows}</div></div>`));
+  }
   // cost over time + by model
   const maxModel = Math.max(...(s.byModel||[]).map(m=>m.cost),1);
   app.appendChild(el(`<div class="grid2">

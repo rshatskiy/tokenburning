@@ -28,6 +28,8 @@ func NewRootCmd() *cobra.Command {
 	root.AddCommand(newConnectCmd())
 	root.AddCommand(newUpdateCmd())
 	root.AddCommand(newStatusCmd())
+	root.AddCommand(newOptimizeCmd())
+	root.AddCommand(newCurrencyCmd())
 	root.AddCommand(newPlanCmd())
 	root.AddCommand(newAliasCmd())
 	return root

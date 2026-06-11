@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/rshatskiy/tokenburning/internal/pricing"
 	"github.com/rshatskiy/tokenburning/internal/store"
 )
 
@@ -13,6 +14,8 @@ type Server struct {
 	db      *store.DB
 	token   string
 	planUSD float64 // цена подписки $/мес (0 = не задана)
+	curCode string  // валюта отображения (пусто = USD)
+	curRate float64
 	mux     *http.ServeMux
 }
 
@@ -27,6 +30,12 @@ func NewServer(db *store.DB, token string) *Server {
 // WithPlan включает метрику «извлечено из подписки» в сводке.
 func (s *Server) WithPlan(monthlyUSD float64) *Server {
 	s.planUSD = monthlyUSD
+	return s
+}
+
+// WithCurrency включает конвертацию при отображении (хранение всегда в USD).
+func (s *Server) WithCurrency(code string, rate float64) *Server {
+	s.curCode, s.curRate = code, rate
 	return s
 }
 
@@ -65,6 +74,10 @@ func (s *Server) handleSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	attachPlan(&sum, s.db, s.planUSD)
+	attachInsights(&sum, s.db)
+	if s.curCode != "" && s.curRate > 0 {
+		sum.Currency = &CurrencyInfo{Code: s.curCode, Rate: s.curRate, Symbol: pricing.CurrencySymbol(s.curCode)}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(sum)
 }

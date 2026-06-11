@@ -368,3 +368,57 @@ func (d *DB) CostTotal(f Filter) (float64, error) {
 	err := d.db.QueryRow(`SELECT COALESCE(SUM(cost_amount),0) FROM events WHERE `+w, args...).Scan(&v)
 	return v, err
 }
+
+// ProjectCacheRate — токены проекта для оценки кэш-хита (fresh input vs cache read).
+type ProjectCacheRate struct {
+	Project   string
+	Input     int64
+	CacheRead int64
+}
+
+// ProjectCacheRates — input/cache_read по проектам под фильтром.
+func (d *DB) ProjectCacheRates(f Filter) ([]ProjectCacheRate, error) {
+	w, args := f.where()
+	rows, err := d.db.Query(`SELECT coalesce(project_key,''), COALESCE(SUM(tok_input),0), COALESCE(SUM(tok_cache_read),0)
+        FROM events WHERE `+w+` GROUP BY 1`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ProjectCacheRate
+	for rows.Next() {
+		var r ProjectCacheRate
+		if err := rows.Scan(&r.Project, &r.Input, &r.CacheRead); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// SessionCost — стоимость одной сессии (для поиска выбросов).
+type SessionCost struct {
+	SessionID string
+	Tool      string
+	Cost      float64
+}
+
+// SessionCosts — стоимость по сессиям под фильтром (без NULL-сессий).
+func (d *DB) SessionCosts(f Filter) ([]SessionCost, error) {
+	w, args := f.where()
+	rows, err := d.db.Query(`SELECT session_id, tool, COALESCE(SUM(cost_amount),0)
+        FROM events WHERE session_id IS NOT NULL AND `+w+` GROUP BY session_id, tool`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SessionCost
+	for rows.Next() {
+		var s SessionCost
+		if err := rows.Scan(&s.SessionID, &s.Tool, &s.Cost); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
