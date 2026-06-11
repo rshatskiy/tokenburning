@@ -171,7 +171,8 @@ func TestCollectModelFromApiReqEntry(t *testing.T) {
 // (побеждает свежайший ui_messages.json).
 func TestDiscoverFindsAllRootsAndDedupes(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home) // os.UserHomeDir → наш временный $HOME
+	t.Setenv("HOME", home)        // os.UserHomeDir → наш временный $HOME
+	t.Setenv("USERPROFILE", home) // Windows читает USERPROFILE
 
 	userDir := filepath.Join(t.TempDir(), "Code", "User")
 
@@ -228,7 +229,9 @@ func TestDiscoverFindsAllRootsAndDedupes(t *testing.T) {
 
 // Пустые пути → пусто, без ошибок (на чужой машине расширений может не быть).
 func TestDiscoverEmptyPaths(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	emptyHome := t.TempDir()
+	t.Setenv("HOME", emptyHome)
+	t.Setenv("USERPROFILE", emptyHome)
 	a := New()
 	srcs, err := a.Discover(platform.Paths{})
 	if err != nil {
