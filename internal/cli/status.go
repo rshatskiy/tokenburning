@@ -38,7 +38,8 @@ func newStatusCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			line := fmt.Sprintf("today $%.2f · month $%.2f", today, month)
+			money := moneyFmt()
+			line := fmt.Sprintf("today %s · month %s", money(today), money(month))
 			if cfg, cerr := config.Load(); cerr == nil && cfg.Plan.MonthlyUSD > 0 && month > 0 {
 				line += fmt.Sprintf(" · ×%.1f из подписки $%.0f", month/cfg.Plan.MonthlyUSD, cfg.Plan.MonthlyUSD)
 			}

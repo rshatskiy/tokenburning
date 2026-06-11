@@ -12,6 +12,7 @@ import (
 
 	"github.com/rshatskiy/tokenburning/internal/config"
 	"github.com/rshatskiy/tokenburning/internal/platform"
+	"github.com/rshatskiy/tokenburning/internal/pricing"
 	"github.com/rshatskiy/tokenburning/internal/store"
 	"github.com/rshatskiy/tokenburning/internal/view"
 )
@@ -55,8 +56,15 @@ func newDashboardCmd() *cobra.Command {
 				cmd.Printf("(не удалось открыть браузер автоматически — откройте ссылку вручную)\n")
 			}
 			srv := view.NewServer(db, token)
-			if cfg, cerr := config.Load(); cerr == nil && cfg.Plan.MonthlyUSD > 0 {
-				srv.WithPlan(cfg.Plan.MonthlyUSD)
+			if cfg, cerr := config.Load(); cerr == nil {
+				if cfg.Plan.MonthlyUSD > 0 {
+					srv.WithPlan(cfg.Plan.MonthlyUSD)
+				}
+				if cfg.Currency != "" {
+					if rate, ferr := pricing.FXRate(cfg.Currency); ferr == nil {
+						srv.WithCurrency(cfg.Currency, rate)
+					}
+				}
 			}
 			return http.Serve(ln, srv.Handler())
 		},

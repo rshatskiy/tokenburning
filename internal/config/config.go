@@ -14,6 +14,7 @@ type Config struct {
 	AutoUpdate      bool              `json:"autoUpdate"`
 	Plan            PlanCfg           `json:"plan,omitempty"`
 	ModelAliases    map[string]string `json:"modelAliases,omitempty"` // имя из логов → каноническое имя прайса
+	Currency        string            `json:"currency,omitempty"`     // валюта отображения: RUB|EUR (пусто = USD)
 }
 
 // PlanCfg — подписка пользователя для метрики «извлечено из подписки».
