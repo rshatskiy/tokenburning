@@ -7,6 +7,7 @@ import (
 
 	"github.com/rshatskiy/tokenburning/internal/aggregate"
 	"github.com/rshatskiy/tokenburning/internal/collect"
+	"github.com/rshatskiy/tokenburning/internal/config"
 	"github.com/rshatskiy/tokenburning/internal/platform"
 	"github.com/rshatskiy/tokenburning/internal/pricing"
 	"github.com/rshatskiy/tokenburning/internal/selfupdate"
@@ -34,7 +35,9 @@ func (o Options) log(msg string) {
 
 // RunOnce выполняет один проход: собрать в БД и (если включено) отправить агрегат.
 func RunOnce(o Options) (collect.Result, error) {
-	cat, err := pricing.LoadEmbedded()
+	_ = pricing.RefreshLive(5 * time.Second) // best-effort обновление цен (кэш сутки)
+	cfg, _ := config.Load()
+	cat, err := pricing.LoadEffective(cfg.ModelAliases)
 	if err != nil {
 		return collect.Result{}, err
 	}

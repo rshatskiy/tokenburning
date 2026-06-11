@@ -24,6 +24,8 @@ type Catalog struct {
 	Version  string                `json:"version"`
 	Currency string                `json:"currency"`
 	Models   map[string]modelPrice `json:"models"`
+
+	aliases map[string]string // пользовательские переименования (прокси-имена → канонические)
 }
 
 // LoadEmbedded читает вшитый fallback-снапшот цен. Сетевых вызовов нет.
@@ -42,6 +44,9 @@ func LoadEmbedded() (*Catalog, error) {
 // суффикс вида "[1m]" (вариант контекстного окна, цена та же) → самый длинный
 // известный префикс (датированные id вроде claude-opus-4-5-20251101).
 func (c *Catalog) lookup(name string) (modelPrice, bool) {
+	if alias, ok := c.aliases[name]; ok {
+		name = alias
+	}
 	if p, ok := c.Models[name]; ok {
 		return p, true
 	}

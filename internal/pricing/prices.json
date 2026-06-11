@@ -14,6 +14,9 @@
     "claude-haiku-4-5-20251001":  {"input": 1.0, "output": 5.0,  "cache_read": 0.1, "cache_5m": 1.25, "cache_1h": 2.0},
     "opus":                       {"input": 5.0, "output": 25.0, "cache_read": 0.5, "cache_5m": 6.25, "cache_1h": 10.0},
     "sonnet":                     {"input": 3.0, "output": 15.0, "cache_read": 0.3, "cache_5m": 3.75, "cache_1h": 6.0},
-    "haiku":                      {"input": 1.0, "output": 5.0,  "cache_read": 0.1, "cache_5m": 1.25, "cache_1h": 2.0}
+    "haiku":                      {"input": 1.0, "output": 5.0,  "cache_read": 0.1, "cache_5m": 1.25, "cache_1h": 2.0},
+    "gemini-2.5-pro":             {"input": 1.25, "output": 10.0, "cache_read": 0.125, "cache_5m": 0, "cache_1h": 0},
+    "gemini-2.5-flash":           {"input": 0.30, "output": 2.5,  "cache_read": 0.03,  "cache_5m": 0, "cache_1h": 0},
+    "gpt-5":                      {"input": 1.25, "output": 10.0, "cache_read": 0.125, "cache_5m": 0, "cache_1h": 0}
   }
 }

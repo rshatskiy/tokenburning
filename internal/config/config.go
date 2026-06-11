@@ -9,9 +9,17 @@ import (
 
 // Config — постоянные настройки демона/отправки (~/.tokenburning/config.json).
 type Config struct {
-	IntervalMinutes int     `json:"intervalMinutes"`
-	Push            PushCfg `json:"push"`
-	AutoUpdate      bool    `json:"autoUpdate"`
+	IntervalMinutes int               `json:"intervalMinutes"`
+	Push            PushCfg           `json:"push"`
+	AutoUpdate      bool              `json:"autoUpdate"`
+	Plan            PlanCfg           `json:"plan,omitempty"`
+	ModelAliases    map[string]string `json:"modelAliases,omitempty"` // имя из логов → каноническое имя прайса
+}
+
+// PlanCfg — подписка пользователя для метрики «извлечено из подписки».
+type PlanCfg struct {
+	Preset     string  `json:"preset,omitempty"` // claude-max | claude-pro | cursor-pro | custom
+	MonthlyUSD float64 `json:"monthlyUsd,omitempty"`
 }
 
 type PushCfg struct {
