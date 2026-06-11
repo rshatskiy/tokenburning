@@ -8,6 +8,10 @@ const (
 	ToolClaudeCode Tool = "claude_code"
 	ToolCursor     Tool = "cursor"
 	ToolCodex      Tool = "codex"
+	ToolGemini     Tool = "gemini_cli"
+	ToolCopilot    Tool = "copilot"
+	ToolOpenCode   Tool = "opencode"
+	ToolCline      Tool = "cline" // семейство: Cline / Roo Code / KiloCode (один формат)
 )
 
 type BillingMode string
