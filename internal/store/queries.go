@@ -2,6 +2,7 @@ package store
 
 import (
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -285,4 +286,85 @@ FROM ev GROUP BY tool, session_id`, since.Unix())
 		out = append(out, ToolSessions{Tool: t, Stats: computeSessionStats(byTool[t])})
 	}
 	return out, nil
+}
+
+// Filter — необязательные ограничения сводок (нулевые значения = без ограничения).
+type Filter struct {
+	Since   time.Time
+	Until   time.Time
+	Project string // подстрока project_key (без регистра)
+	Tool    string // точное имя инструмента
+}
+
+func (f Filter) where() (string, []any) {
+	cond, args := []string{"1=1"}, []any{}
+	if !f.Since.IsZero() {
+		cond = append(cond, "ts >= ?")
+		args = append(args, f.Since.Unix())
+	}
+	if !f.Until.IsZero() {
+		cond = append(cond, "ts < ?")
+		args = append(args, f.Until.Unix())
+	}
+	if f.Project != "" {
+		cond = append(cond, "lower(coalesce(project_key,'')) LIKE ?")
+		args = append(args, "%"+strings.ToLower(f.Project)+"%")
+	}
+	if f.Tool != "" {
+		cond = append(cond, "tool = ?")
+		args = append(args, f.Tool)
+	}
+	return strings.Join(cond, " AND "), args
+}
+
+// FilteredByTool — сводка по инструментам с фильтром.
+func (d *DB) FilteredByTool(f Filter) ([]ToolSummary, error) {
+	w, args := f.where()
+	rows, err := d.db.Query(`SELECT tool, COUNT(*),
+        COALESCE(SUM(MAX(tok_total, tok_input+tok_output+tok_cache_read+tok_cache_1h+tok_cache_5m+tok_reasoning)),0),
+        COALESCE(SUM(cost_amount),0)
+        FROM events WHERE `+w+` GROUP BY tool ORDER BY 4 DESC, 3 DESC`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ToolSummary
+	for rows.Next() {
+		var s ToolSummary
+		if err := rows.Scan(&s.Tool, &s.Events, &s.Tokens, &s.CostAmount); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+// FilteredByModel — сводка по моделям с фильтром.
+func (d *DB) FilteredByModel(f Filter) ([]ModelSummary, error) {
+	w, args := f.where()
+	rows, err := d.db.Query(`SELECT model, COUNT(*),
+        COALESCE(SUM(MAX(tok_total, tok_input+tok_output+tok_cache_read+tok_cache_1h+tok_cache_5m+tok_reasoning)),0),
+        COALESCE(SUM(cost_amount),0)
+        FROM events WHERE `+w+` GROUP BY model ORDER BY 4 DESC`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ModelSummary
+	for rows.Next() {
+		var m ModelSummary
+		if err := rows.Scan(&m.Model, &m.Events, &m.Tokens, &m.CostAmount); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+// CostTotal — суммарная стоимость под фильтром.
+func (d *DB) CostTotal(f Filter) (float64, error) {
+	w, args := f.where()
+	var v float64
+	err := d.db.QueryRow(`SELECT COALESCE(SUM(cost_amount),0) FROM events WHERE `+w, args...).Scan(&v)
+	return v, err
 }

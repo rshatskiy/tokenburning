@@ -33,6 +33,7 @@ const I18N = {
     cacheSaved: "cache saved",
     savedTip: "Estimated savings: your cache-read tokens cost ~10× less than fresh input would. Without caching this bill would be far higher.",
     share: "Share ↗", shareTitle: "Share your stats", dl: "Download", copyImg: "Copy image", copied: "Copied!", postX: "Post on X",
+    planLine: "extracted ×{x} from your ${m}/mo plan this month",
     cardHeadline: "My AI coding spend", periodAll: "all time", periodPrefix: "last ", periodDays: " days",
     trackYours: "track yours →",
     shareHint: "\"Copy\" puts the card on your clipboard — paste into a post (⌘/Ctrl+V). Or \"Download\" the PNG.",
@@ -41,6 +42,7 @@ const I18N = {
   },
   ru: {
     all: "всё", nodata: "нет данных", none: "(нет)", session: "сессия",
+    planLine: "извлечено ×{x} из подписки ${m}/мес за этот месяц",
     emptyTitle: "Данных пока нет",
     emptyBody: "Логи Claude Code, Codex или Cursor на этой машине не найдены. Поработайте с ИИ-инструментами и обновите страницу — или выполните <code>tokenburning scan</code> в терминале.",
     cost: "Стоимость", cacheRead: "% кэш-чтения", tokens: "Токены", activeDays: "Активных дней",
@@ -224,7 +226,8 @@ function render(s) {
   const cachePct = k.tokens ? Math.round(k.cacheReadTokens/k.tokens*100) : 0;
   const saved = s.cacheSavings || 0;
   const savedLine = saved > 1 ? `<br><span style="color:var(--acc)">${t('cacheSaved')} ≈${fmtUSD(saved)}</span>${info(t('savedTip'))}` : "";
-  const cacheSub = `${cachePct}${t('cacheRead')}${info(t('cacheTip'))}${savedLine}`;
+  const planLine = s.plan && s.plan.multiplier > 0 ? `<br><span style="color:var(--acc)">${t('planLine').replace('{x}', s.plan.multiplier.toFixed(1)).replace('{m}', Math.round(s.plan.monthlyUsd))}</span>` : "";
+  const cacheSub = `${cachePct}${t('cacheRead')}${info(t('cacheTip'))}${savedLine}${planLine}`;
   app.appendChild(el(`<div class="kpis">
     ${kpiCard(t('cost'), fmtUSD(k.cost), cacheSub, true, t('costTip'))}
     ${kpiCard(t('tokens'), fmtTok(k.tokens), "")}

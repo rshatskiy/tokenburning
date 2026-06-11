@@ -10,9 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rshatskiy/tokenburning/internal/collect"
+	"github.com/rshatskiy/tokenburning/internal/config"
 	"github.com/rshatskiy/tokenburning/internal/platform"
-	"github.com/rshatskiy/tokenburning/internal/pricing"
 	"github.com/rshatskiy/tokenburning/internal/store"
 	"github.com/rshatskiy/tokenburning/internal/view"
 )
@@ -34,16 +33,10 @@ func newDashboardCmd() *cobra.Command {
 
 			// Свежий сбор перед показом: иначе первый запуск встречает пользователя
 			// пустым дашбордом. Ошибки сбора не блокируют показ.
-			if paths, perr := platform.Detect(); perr == nil {
-				if cat, cerr := pricing.LoadEmbedded(); cerr == nil {
-					if _, rerr := collect.Run(db, cat, paths, func(tool string, i, n int) {
-						fmt.Fprintf(os.Stderr, "\r%s %d/%d…", tool, i, n)
-					}); rerr != nil {
-						cmd.Printf("\nпредупреждение: сбор данных не удался: %v\n", rerr)
-					} else {
-						fmt.Fprintln(os.Stderr)
-					}
-				}
+			if _, rerr := collectInto(db); rerr != nil {
+				cmd.Printf("\nпредупреждение: сбор данных не удался: %v\n", rerr)
+			} else {
+				fmt.Fprintln(os.Stderr)
 			}
 
 			tok := make([]byte, 16)
@@ -62,6 +55,9 @@ func newDashboardCmd() *cobra.Command {
 				cmd.Printf("(не удалось открыть браузер автоматически — откройте ссылку вручную)\n")
 			}
 			srv := view.NewServer(db, token)
+			if cfg, cerr := config.Load(); cerr == nil && cfg.Plan.MonthlyUSD > 0 {
+				srv.WithPlan(cfg.Plan.MonthlyUSD)
+			}
 			return http.Serve(ln, srv.Handler())
 		},
 	}

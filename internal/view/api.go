@@ -34,6 +34,27 @@ type Summary struct {
 	Activity       []store.DaySessions    `json:"activity"`
 	SessionsByTool []store.ToolSessions   `json:"sessionsByTool"`
 	CacheSavings   float64                `json:"cacheSavings"`
+	Plan           *PlanInfo              `json:"plan,omitempty"`
+}
+
+// PlanInfo — «извлечено из подписки»: API-эквивалент с начала месяца против цены плана.
+type PlanInfo struct {
+	MonthlyUSD float64 `json:"monthlyUsd"`
+	MTDCost    float64 `json:"mtdCost"`
+	Multiplier float64 `json:"multiplier"`
+}
+
+// attachPlan дополняет сводку метрикой подписки (no-op при usd<=0).
+func attachPlan(s *Summary, db *store.DB, usd float64) {
+	if usd <= 0 {
+		return
+	}
+	now := time.Now()
+	mtd, err := db.CostTotal(store.Filter{Since: time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)})
+	if err != nil {
+		return
+	}
+	s.Plan = &PlanInfo{MonthlyUSD: usd, MTDCost: mtd, Multiplier: mtd / usd}
 }
 
 // BuildSummary собирает все агрегаты за период в один объект для фронта.

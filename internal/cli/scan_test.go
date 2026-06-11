@@ -23,7 +23,7 @@ func TestRunScanProducesSummary(t *testing.T) {
 	t.Setenv("CODEX_HOME", filepath.Join(home, "no-codex"))
 
 	dbPath := filepath.Join(t.TempDir(), "tokenburning.db")
-	out, err := runScan(dbPath)
+	out, err := runScan(dbPath, scanOpts{})
 	if err != nil {
 		t.Fatalf("runScan: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestRunScanPrintsPerToolSection(t *testing.T) {
 	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(home, ".claude"))
 	t.Setenv("CODEX_HOME", filepath.Join(home, "no-codex"))
 	dbPath := filepath.Join(t.TempDir(), "tokenburning.db")
-	out, err := runScan(dbPath)
+	out, err := runScan(dbPath, scanOpts{})
 	if err != nil {
 		t.Fatalf("runScan: %v", err)
 	}
@@ -76,14 +76,14 @@ func TestRescanAfterRewriteNoDuplicateCounts(t *testing.T) {
 	if err := os.WriteFile(logPath, []byte(ev("req_1")+ev("req_2")), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runScan(dbPath); err != nil {
+	if _, err := runScan(dbPath, scanOpts{}); err != nil {
 		t.Fatal(err)
 	}
 	// «Компактизация»: файл переписан, req_1 исчез, добавился req_3.
 	if err := os.WriteFile(logPath, []byte(ev("req_2")+ev("req_3")), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	out, err := runScan(dbPath)
+	out, err := runScan(dbPath, scanOpts{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,9 +10,10 @@ import (
 )
 
 type Server struct {
-	db    *store.DB
-	token string
-	mux   *http.ServeMux
+	db      *store.DB
+	token   string
+	planUSD float64 // цена подписки $/мес (0 = не задана)
+	mux     *http.ServeMux
 }
 
 func NewServer(db *store.DB, token string) *Server {
@@ -20,6 +21,12 @@ func NewServer(db *store.DB, token string) *Server {
 	sub, _ := fs.Sub(assetsFS, "assets")
 	s.mux.Handle("/", http.FileServer(http.FS(sub)))
 	s.mux.HandleFunc("/api/summary", s.handleSummary)
+	return s
+}
+
+// WithPlan включает метрику «извлечено из подписки» в сводке.
+func (s *Server) WithPlan(monthlyUSD float64) *Server {
+	s.planUSD = monthlyUSD
 	return s
 }
 
@@ -57,6 +64,7 @@ func (s *Server) handleSummary(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	attachPlan(&sum, s.db, s.planUSD)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(sum)
 }
