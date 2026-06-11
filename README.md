@@ -4,7 +4,7 @@
 
 **One dashboard for everything your AI coding tools cost you.**
 
-Cost, tokens, activity and session analytics across Claude Code, Codex and Cursor — one static binary, installs in seconds, sends nothing to the network by default.
+Cost, tokens, activity and session analytics across Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, OpenCode and the Cline family — one static binary, installs in seconds, sends nothing to the network by default.
 
 [![CI](https://github.com/rshatskiy/tokenburning/actions/workflows/ci.yml/badge.svg)](https://github.com/rshatskiy/tokenburning/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/rshatskiy/tokenburning?sort=semver)](https://github.com/rshatskiy/tokenburning/releases)
@@ -49,6 +49,9 @@ Or grab a binary for your OS/arch from [Releases](https://github.com/rshatskiy/t
 
 ```sh
 tokenburning scan        # parse local logs, print cost by tool/model
+tokenburning scan --period today --format json   # periods, filters, JSON/CSV export
+tokenburning status      # one-liner: today + month (for status bars)
+tokenburning plan set claude-max   # show "extracted ×N from your plan"
 tokenburning dashboard   # open the local web dashboard (127.0.0.1, token-gated)
 tokenburning update      # self-update to the latest release (SHA-256 verified)
 tokenburning version

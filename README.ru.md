@@ -4,7 +4,7 @@
 
 **Единый дашборд по всему, что тебе стоят ИИ-инструменты для кода.**
 
-Стоимость, токены, активность и аналитика сессий по Claude Code, Codex и Cursor — один статический бинарь, ставится за секунды, по умолчанию ничего не шлёт в сеть.
+Стоимость, токены, активность и аналитика сессий по Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, OpenCode и семейству Cline — один статический бинарь, ставится за секунды, по умолчанию ничего не шлёт в сеть.
 
 [![CI](https://github.com/rshatskiy/tokenburning/actions/workflows/ci.yml/badge.svg)](https://github.com/rshatskiy/tokenburning/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/rshatskiy/tokenburning?sort=semver)](https://github.com/rshatskiy/tokenburning/releases)
