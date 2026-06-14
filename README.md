@@ -2,9 +2,9 @@
 
 # 🔥 tokenburning
 
-**One dashboard for everything your AI coding tools cost you.**
+**How much did you actually squeeze out of your AI subscriptions.**
 
-Cost, tokens, activity and session analytics across Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, OpenCode and the Cline family — one static binary, installs in seconds, sends nothing to the network by default.
+$100 plan → $4,000 of tokens at API prices. tokenburning reads the local logs of Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, OpenCode and the Cline family, prices them with live pricing and shows your squeeze ratio (**×N vs API**), where the spend goes and how you actually work — one static binary, installs in seconds, sends nothing to the network by default.
 
 [![CI](https://github.com/rshatskiy/tokenburning/actions/workflows/ci.yml/badge.svg)](https://github.com/rshatskiy/tokenburning/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/rshatskiy/tokenburning?sort=semver)](https://github.com/rshatskiy/tokenburning/releases)
@@ -21,9 +21,9 @@ Cost, tokens, activity and session analytics across Claude Code, Codex, Cursor, 
 
 ## Why
 
-You run Claude Code, Cursor and Codex every day — and you have no idea what they cost you in total, or where the money actually burns. The numbers sit in three different local log formats, and none of them add up for you.
+You pay a flat subscription but burn a multiple of it in tokens at API prices — yet you can't see how far you beat the meter or where the spend actually goes. The numbers sit in different local log formats, and none of them add up for you.
 
-`tokenburning` reads those logs **locally**, prices them, and shows you in one view: total spend, where it goes by tool / model / project, and how your work sessions actually look. One `curl | sh`, a local dashboard, nothing leaves your machine.
+`tokenburning` reads those logs **locally**, prices them with live pricing, and shows you in one view: your squeeze ratio (**×N vs API**), total spend and where it goes by tool / model / project, and how your work sessions actually look. One `curl | sh`, a local dashboard, nothing leaves your machine.
 
 > Running a team? There's an optional, consent-gated rollup — see [Teams](#teams--optional-team-rollup).
 
@@ -100,7 +100,7 @@ tokenburning disable                # turn it off
 
 ## Teams — optional team rollup
 
-Want a shared view across the team? Sign up, create an org, invite developers, and each one gets a one-line command with a personal token:
+Rolled AI out to a team? "They seem to use it" doesn't sell upstairs — leadership needs proof that adoption is happening and the subscription budget pays off. The team-lead dashboard shows who's actually onboard (and who's paying for an idle seat), value extracted with **ROI against the subscription budget**, and who needs help; a weekly digest lands in Telegram. Consent-based and aggregate-only — report up without becoming a watchdog. Sign up, create an org, invite developers, and each one gets a one-line command with a personal token:
 
 1. Go to **[tokenburning.online](https://tokenburning.online)** (or **[tokenburning.ru](https://tokenburning.ru)**) and sign in with an email code.
 2. Create your organization, then share the invite link with your developers.
